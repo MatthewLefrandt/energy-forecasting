@@ -95,38 +95,48 @@ def load_models():
     
     return models, scalers
 
-def create_monthly_data(yearly_data, start_year=1980):
-    """Convert yearly data to monthly data"""
-    monthly_data = []
+def create_monthly_data_with_interpolation(yearly_data, start_year=1980):
+    """Convert yearly data to monthly data with linear interpolation (matching training process)"""
+    # Create DataFrame with yearly data
     years = list(range(start_year, start_year + len(yearly_data)))
+    df_yearly = pd.DataFrame({
+        'Tahun': years,
+        'Produksi': yearly_data
+    })
     
-    for i, year_value in enumerate(yearly_data):
-        if pd.notna(year_value):
-            # Create 12 monthly values for each year
-            for month in range(1, 13):
-                monthly_data.append({
-                    'year': years[i],
-                    'month': month,
-                    'value': year_value / 12  # Distribute yearly value across 12 months
-                })
+    # Convert to datetime and set as index
+    df_yearly['Tahun'] = pd.to_datetime(df_yearly['Tahun'], format='%Y')
+    df_yearly = df_yearly.set_index('Tahun')
+    
+    # Resample to monthly with linear interpolation (same as training)
+    df_monthly = df_yearly.resample('MS').interpolate(method='linear')
+    
+    # Convert back to simple format for processing
+    monthly_data = []
+    for date, row in df_monthly.iterrows():
+        monthly_data.append({
+            'year': date.year,
+            'month': date.month,
+            'value': row['Produksi']
+        })
     
     return pd.DataFrame(monthly_data)
 
-def get_lagged_features(data, energy_type, target_year):
-    """Get lagged features based on energy type"""
-    # Use December as the target month (month 12)
+def get_lagged_features_corrected(data, energy_type, target_year):
+    """Get lagged features in correct order (Lag_1, Lag_2, ..., Lag_12)"""
+    # Use December as the target month
     target_month = 12
     
     if energy_type == 'biodiesel':
         # Biodiesel uses 1 lag (annual data)
         lag_periods = [1]
     else:
-        # Other energy types use 12 lags (monthly data)
-        lag_periods = list(range(1, 13))
+        # Other energy types use 12 lags (monthly data) in correct order
+        lag_periods = list(range(1, 13))  # Lag_1 to Lag_12
     
     features = []
     
-    # Convert target to datetime for easier calculation
+    # Convert target to datetime
     target_date = pd.Timestamp(year=target_year, month=target_month, day=1)
     
     for lag in lag_periods:
@@ -134,7 +144,7 @@ def get_lagged_features(data, energy_type, target_year):
             # For biodiesel, lag by years
             lag_date = target_date - pd.DateOffset(years=lag)
         else:
-            # For others, lag by months
+            # For others, lag by months (Lag_1 means 1 month back, etc.)
             lag_date = target_date - pd.DateOffset(months=lag)
         
         # Find the corresponding value in historical data
@@ -146,17 +156,33 @@ def get_lagged_features(data, energy_type, target_year):
         if not matching_data.empty:
             features.append(matching_data['value'].iloc[0])
         else:
-            # If no data found, use interpolation or last known value
+            # Find the closest available data
             prev_data = data[
                 (data['year'] < lag_date.year) | 
-                ((data['year'] == lag_date.year) & (data['month'] < lag_date.month))
-            ]
+                ((data['year'] == lag_date.year) & (data['month'] <= lag_date.month))
+            ].sort_values(['year', 'month'])
+            
             if not prev_data.empty:
                 features.append(prev_data['value'].iloc[-1])
             else:
-                features.append(0)  # Default value if no historical data
+                # Use mean as fallback
+                if not data.empty:
+                    features.append(data['value'].mean())
+                else:
+                    features.append(0)
+    
+    # Debug information
+    st.write(f"**Debug Info for {energy_type}:**")
+    st.write(f"Target: {target_year}-{target_month}")
+    st.write(f"Lagged features shape: {np.array(features).shape}")
+    st.write(f"Lagged features (Lag_1 to Lag_{len(features)}): {[f'{f:.2f}' for f in features]}")
     
     return np.array(features).reshape(1, -1)
+
+def moving_average_smoothing(prediction, window=6):
+    """Apply moving average smoothing (post-processing like in training)"""
+    # For single prediction, return as is (smoothing needs multiple points)
+    return prediction
 
 def make_prediction(energy_type, year, models, scalers, historical_data):
     """Make prediction for specified energy type and year"""
@@ -190,31 +216,52 @@ def make_prediction(energy_type, year, models, scalers, historical_data):
             value = prod_data[col].iloc[0]
             yearly_values.append(value if pd.notna(value) else 0)
         
-        # Create monthly data if needed
+        # Create monthly data with interpolation if needed (matching training process)
         if energy_type != 'biodiesel':
-            monthly_df = create_monthly_data(yearly_values, start_year=int(year_columns[0]))
+            monthly_df = create_monthly_data_with_interpolation(yearly_values, start_year=int(year_columns[0]))
         else:
-            # For biodiesel, keep as yearly data but convert to DataFrame format
+            # For biodiesel, keep as yearly data
             years = [int(col) for col in year_columns]
             monthly_df = pd.DataFrame({
                 'year': years,
-                'month': [1] * len(years),  # Use month 1 for yearly data
+                'month': [12] * len(years),  # Use December for yearly data consistency
                 'value': yearly_values
             })
         
-        # Get lagged features (using December as target month)
-        features = get_lagged_features(monthly_df, energy_type, year)
+        # Debug: show historical data info
+        st.write(f"**Historical data shape:** {monthly_df.shape}")
+        st.write(f"**Year range:** {monthly_df['year'].min()} - {monthly_df['year'].max()}")
+        st.write(f"**Value range:** {monthly_df['value'].min():.2f} - {monthly_df['value'].max():.2f}")
+        st.write(f"**Sample recent data:**")
+        st.dataframe(monthly_df.tail(10))
+        
+        # Get lagged features (using corrected method)
+        features = get_lagged_features_corrected(monthly_df, energy_type, year)
+        
+        # Debug: show raw features
+        st.write(f"**Raw features shape:** {features.shape}")
         
         # Scale features
-        if energy_type in scalers:
+        if energy_type in scalers and scalers[energy_type] is not None:
             features_scaled = scalers[energy_type].transform(features)
+            st.write(f"**Scaled features sample:** {[f'{f:.4f}' for f in features_scaled[0][:5]]}")
         else:
             features_scaled = features
+            st.warning(f"No scaler available for {energy_type}, using raw features")
         
         # Make prediction
-        if energy_type in models:
-            prediction = models[energy_type].predict(features_scaled)[0]
-            return prediction, None
+        if energy_type in models and models[energy_type] is not None:
+            raw_prediction = models[energy_type].predict(features_scaled)[0]
+            
+            # Apply smoothing (though for single prediction, it won't change much)
+            final_prediction = moving_average_smoothing(raw_prediction)
+            
+            # Debug: show model info
+            st.write(f"**Model type:** {type(models[energy_type])}")
+            st.write(f"**Raw prediction:** {raw_prediction:.2f}")
+            st.write(f"**Final prediction:** {final_prediction:.2f}")
+            
+            return final_prediction, None
         else:
             return None, f"Model not found for {energy_type}"
             
