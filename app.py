@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import pickle
+import joblib
 from datetime import datetime
 import warnings
 warnings.filterwarnings('ignore')
@@ -77,32 +77,21 @@ def load_models():
         'petroleum': 'materials/scaler_petroleum.pkl'
     }
     
-    # Load models with different approaches
+    # Load models using joblib
     for energy_type, file_path in model_files.items():
         try:
-            # Try different loading methods
-            with open(file_path, 'rb') as f:
-                try:
-                    models[energy_type] = pickle.load(f)
-                except Exception:
-                    # Try loading with different protocols
-                    f.seek(0)
-                    models[energy_type] = pickle.load(f, encoding='latin1')
+            models[energy_type] = joblib.load(file_path)
+            st.success(f"✅ Loaded {energy_type} model successfully")
         except Exception as e:
-            st.warning(f"Could not load {energy_type} model: {str(e)}")
+            st.warning(f"❌ Could not load {energy_type} model: {str(e)}")
     
-    # Load scalers with different approaches
+    # Load scalers using joblib
     for energy_type, file_path in scaler_files.items():
         try:
-            with open(file_path, 'rb') as f:
-                try:
-                    scalers[energy_type] = pickle.load(f)
-                except Exception:
-                    # Try loading with different protocols
-                    f.seek(0)
-                    scalers[energy_type] = pickle.load(f, encoding='latin1')
+            scalers[energy_type] = joblib.load(file_path)
+            st.success(f"✅ Loaded {energy_type} scaler successfully")
         except Exception as e:
-            st.warning(f"Could not load {energy_type} scaler: {str(e)}")
+            st.warning(f"❌ Could not load {energy_type} scaler: {str(e)}")
     
     return models, scalers
 
