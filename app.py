@@ -77,21 +77,32 @@ def load_models():
         'petroleum': 'materials/scaler_petroleum.pkl'
     }
     
-    # Load models
+    # Load models with different approaches
     for energy_type, file_path in model_files.items():
         try:
+            # Try different loading methods
             with open(file_path, 'rb') as f:
-                models[energy_type] = pickle.load(f)
+                try:
+                    models[energy_type] = pickle.load(f)
+                except Exception:
+                    # Try loading with different protocols
+                    f.seek(0)
+                    models[energy_type] = pickle.load(f, encoding='latin1')
         except Exception as e:
-            st.error(f"Error loading {energy_type} model: {str(e)}")
+            st.warning(f"Could not load {energy_type} model: {str(e)}")
     
-    # Load scalers
+    # Load scalers with different approaches
     for energy_type, file_path in scaler_files.items():
         try:
             with open(file_path, 'rb') as f:
-                scalers[energy_type] = pickle.load(f)
+                try:
+                    scalers[energy_type] = pickle.load(f)
+                except Exception:
+                    # Try loading with different protocols
+                    f.seek(0)
+                    scalers[energy_type] = pickle.load(f, encoding='latin1')
         except Exception as e:
-            st.error(f"Error loading {energy_type} scaler: {str(e)}")
+            st.warning(f"Could not load {energy_type} scaler: {str(e)}")
     
     return models, scalers
 
@@ -112,8 +123,11 @@ def create_monthly_data(yearly_data, start_year=1980):
     
     return pd.DataFrame(monthly_data)
 
-def get_lagged_features(data, energy_type, target_year, target_month):
+def get_lagged_features(data, energy_type, target_year):
     """Get lagged features based on energy type"""
+    # Use December as the target month (month 12)
+    target_month = 12
+    
     if energy_type == 'biodiesel':
         # Biodiesel uses 1 lag (annual data)
         lag_periods = [1]
@@ -155,8 +169,8 @@ def get_lagged_features(data, energy_type, target_year, target_month):
     
     return np.array(features).reshape(1, -1)
 
-def make_prediction(energy_type, year, month, models, scalers, historical_data):
-    """Make prediction for specified energy type, year, and month"""
+def make_prediction(energy_type, year, models, scalers, historical_data):
+    """Make prediction for specified energy type and year"""
     try:
         # Energy type mapping for data filtering
         energy_mapping = {
@@ -199,8 +213,8 @@ def make_prediction(energy_type, year, month, models, scalers, historical_data):
                 'value': yearly_values
             })
         
-        # Get lagged features
-        features = get_lagged_features(monthly_df, energy_type, year, month)
+        # Get lagged features (using December as target month)
+        features = get_lagged_features(monthly_df, energy_type, year)
         
         # Scale features
         if energy_type in scalers:
@@ -248,7 +262,7 @@ def main():
         list(energy_types.keys())
     )
     
-    # Year and month selection
+    # Year selection only
     current_year = datetime.now().year
     year = st.sidebar.number_input(
         "Target Year:",
@@ -258,19 +272,13 @@ def main():
         step=1
     )
     
-    month = st.sidebar.selectbox(
-        "Target Month:",
-        list(range(1, 13)),
-        format_func=lambda x: datetime(2023, x, 1).strftime('%B')
-    )
-    
     # Prediction button
     if st.sidebar.button("🔮 Make Prediction", type="primary"):
         energy_key = energy_types[selected_energy]
         
         with st.spinner("Making prediction..."):
             prediction, error = make_prediction(
-                energy_key, year, month, models, scalers, historical_data
+                energy_key, year, models, scalers, historical_data
             )
         
         if error:
@@ -284,14 +292,13 @@ def main():
                     f'<div class="prediction-result">'
                     f'Predicted {selected_energy} Production<br>'
                     f'<span style="font-size: 2rem;">{prediction:,.2f}</span><br>'
-                    f'for {datetime(year, month, 1).strftime("%B %Y")}'
+                    f'for Year {year}'
                     f'</div>',
                     unsafe_allow_html=True
                 )
     
     # Information section
     st.markdown("---")
-    st.markdown("### 📊 Model Information")
     
     col1, col2 = st.columns(2)
     
@@ -304,12 +311,9 @@ def main():
     
     with col2:
         st.markdown("""
-        **Available Models:**
-        - Coal (SVR)
-        - Natural Gas (SVR)  
-        - Petroleum (SVR)
-        - Biodiesel (Linear Regression)
-        - Fuel Ethanol (SVR)
+        **Prediction Target:**
+        - Predictions are made for December of the target year
+        - Based on historical production data
         """)
     
     # Historical data preview
