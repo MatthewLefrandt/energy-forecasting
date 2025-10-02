@@ -10,11 +10,13 @@ import matplotlib.pyplot as plt  # Pastikan ini diimpor
 DATA_PATH = "materials/Combined_modelling.xlsx"
 MODEL_PATHS = {
     "Batu Bara": "materials/svr_coal_model.pkl",
-    "Gas Alam": "materials/svr_natural_gas_model.pkl"
+    "Gas Alam": "materials/svr_natural_gas_model.pkl",
+    "Minyak Bumi": "materials/svr_petroleum_model.pkl"
 }
 SCALER_PATHS = {
     "Batu Bara": "materials/scaler_coal.pkl",
-    "Gas Alam": "materials/scaler_natural_gas.pkl"
+    "Gas Alam": "materials/scaler_natural_gas.pkl",
+    "Minyak Bumi": "materials/scaler_petroleum.pkl"
 }
 
 # --- LOAD DATA ---
@@ -75,8 +77,8 @@ st.write("Aplikasi ini memprediksi produksi energi berdasarkan model SVR yang te
 
 # --- USER INPUT ---
 st.sidebar.header("Input Prediksi")
-energy_type = st.sidebar.selectbox("Pilih Jenis Energi", options=["Batu Bara", "Gas Alam"])
-target_year = st.sidebar.number_input("Masukkan Tahun Prediksi", min_value=2024, max_value=2050, value=2030, step=1)
+energy_type = st.sidebar.selectbox("Pilih Jenis Energi", options=["Batu Bara", "Gas Alam", "Minyak Bumi"])
+target_year = st.sidebar.number_input("Masukkan Tahun Prediksi", min_value=2025, max_value=2100, value=2030, step=1)
 
 # --- LOAD MODEL & SCALER ---
 try:
@@ -121,7 +123,7 @@ try:
     plt.figure(figsize=(12, 6))
     plt.plot(df.index, df["Produksi"], label="Data Aktual", color="blue")
     plt.plot(future_df.index, future_df["Produksi"], label="Prediksi (Smoothed)", color="red", linestyle="--")
-    plt.axvline(x=pd.to_datetime("2024-01-01"), color="black", linestyle=":", label="Awal Prediksi")
+    plt.axvline(x=pd.to_datetime("2025-01-01"), color="black", linestyle=":", label="Awal Prediksi")
     plt.title(f"Prediksi Produksi Energi {energy_type}")
     plt.xlabel("Tahun")
     plt.ylabel("Produksi")
