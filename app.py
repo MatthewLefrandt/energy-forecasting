@@ -83,16 +83,37 @@ st.markdown("""
         color: #424242;
         margin-bottom: 2rem;
     }
-    .prediction-card {
-        background-color: #f5f7f9;
-        padding: 20px;
-        border-radius: 10px;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    .prediction-section {
+        margin-top: 20px;
+        margin-bottom: 30px;
+    }
+    .prediction-title {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #424242;
+        margin-bottom: 15px;
     }
     .prediction-value {
-        font-size: 3rem;
+        font-size: 4rem;
         font-weight: bold;
         color: #1E88E5;
+        text-align: center;
+        padding: 20px 0;
+        background: linear-gradient(to right, rgba(30, 136, 229, 0.1), rgba(30, 136, 229, 0.2), rgba(30, 136, 229, 0.1));
+        border-radius: 10px;
+        margin-bottom: 20px;
+        animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+        0% {
+            box-shadow: 0 0 0 0 rgba(30, 136, 229, 0.4);
+        }
+        70% {
+            box-shadow: 0 0 0 10px rgba(30, 136, 229, 0);
+        }
+        100% {
+            box-shadow: 0 0 0 0 rgba(30, 136, 229, 0);
+        }
     }
     .footer {
         margin-top: 3rem;
@@ -104,7 +125,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- HEADER ---
+# --- HEADER --- (only once, at the top)
 st.markdown('<h1 class="main-header">Prediksi Produksi Energi</h1>', unsafe_allow_html=True)
 st.markdown('<p class="sub-header">Visualisasi dan prediksi produksi energi berdasarkan model machine learning</p>', unsafe_allow_html=True)
 
@@ -124,6 +145,7 @@ SCALER_PATHS = {
     "Biodiesel": "materials/scaler_biodiesel.pkl",
     "Fuel Ethanol": "materials/scaler_fuel_ethanol.pkl"
 }
+
 # --- LOAD DATA ---
 @st.cache_data
 def load_data(energy_type):
@@ -146,6 +168,7 @@ def load_data(energy_type):
         df = df.set_index("Tahun")
         df = df.resample("MS").interpolate(method="linear")
     return df
+
 
 # --- SMOOTHING FUNCTION ---
 def moving_average_smoothing(series, window=6):
@@ -221,10 +244,6 @@ ENERGY_COLORS = {
     "Fuel Ethanol": "#8D6E63"
 }
 
-# --- HEADER ---
-st.markdown('<h1 class="main-header">Prediksi Produksi Energi</h1>', unsafe_allow_html=True)
-st.markdown('<p class="sub-header">Visualisasi dan prediksi produksi energi berdasarkan model machine learning</p>', unsafe_allow_html=True)
-
 # --- SIDEBAR ---
 with st.sidebar:
     st.markdown("### Parameter Prediksi")
@@ -288,7 +307,8 @@ try:
 
                 # Tampilkan hasil
                 with col2:
-                    st.markdown(f"### Hasil Prediksi {target_year}")
+                    st.markdown(f"<div class='prediction-section'>", unsafe_allow_html=True)
+                    st.markdown(f"<div class='prediction-title'>Hasil Prediksi {target_year}</div>", unsafe_allow_html=True)
 
                     if target_year in future_df.index:
                         year_prediction = future_df.loc[target_year, "Produksi"]
@@ -296,10 +316,8 @@ try:
                             year_prediction = year_prediction.iloc[0]
 
                         if not pd.isnull(year_prediction):
-                            st.markdown('<div class="prediction-card">', unsafe_allow_html=True)
-                            st.markdown(f"<p>Produksi {energy_type} Tahun {target_year}:</p>", unsafe_allow_html=True)
-                            st.markdown(f'<p class="prediction-value">{year_prediction:.2f}</p>', unsafe_allow_html=True)
-                            st.markdown('</div>', unsafe_allow_html=True)
+                            # Highlight the prediction value with the new styling
+                            st.markdown(f"<div class='prediction-value'>{year_prediction:.2f}</div>", unsafe_allow_html=True)
 
                             # Data ringkasan
                             st.markdown("### Ringkasan Data")
@@ -320,6 +338,8 @@ try:
                                     f"Dari {df.index[-1]} ke {target_year}",
                                     delta_color="normal" if growth >= 0 else "inverse"
                                 )
+
+                    st.markdown("</div>", unsafe_allow_html=True)
 
                 # Visualisasi
                 with col1:
@@ -398,7 +418,8 @@ try:
 
         # Tampilkan hasil
         with col2:
-            st.markdown(f"### Hasil Prediksi {target_year}")
+            st.markdown(f"<div class='prediction-section'>", unsafe_allow_html=True)
+            st.markdown(f"<div class='prediction-title'>Hasil Prediksi {target_year}</div>", unsafe_allow_html=True)
 
             try:
                 december_prediction = future_df.loc[f"{target_year}-12", "Produksi"]
@@ -406,10 +427,8 @@ try:
                     december_prediction = december_prediction.iloc[0]
 
                 if not pd.isnull(december_prediction):
-                    st.markdown('<div class="prediction-card">', unsafe_allow_html=True)
-                    st.markdown(f"<p>Produksi {energy_type} Desember {target_year}:</p>", unsafe_allow_html=True)
-                    st.markdown(f'<p class="prediction-value">{december_prediction:.2f}</p>', unsafe_allow_html=True)
-                    st.markdown('</div>', unsafe_allow_html=True)
+                    # Highlight the prediction value with the new styling
+                    st.markdown(f"<div class='prediction-value'>{december_prediction:.2f}</div>", unsafe_allow_html=True)
 
                     # Data ringkasan
                     st.markdown("### Ringkasan Data")
@@ -439,6 +458,8 @@ try:
                             )
             except (KeyError, Exception) as e:
                 st.warning(f"Tidak ada hasil prediksi untuk Desember {target_year}.")
+
+            st.markdown("</div>", unsafe_allow_html=True)
 
         # Visualisasi
         with col1:
