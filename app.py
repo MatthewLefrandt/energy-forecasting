@@ -4,6 +4,7 @@ import numpy as np
 import joblib  # Ganti dari pickle ke joblib
 from sklearn.preprocessing import StandardScaler
 from datetime import datetime
+import matplotlib.pyplot as plt  # Pastikan ini diimpor
 
 # --- PATHS ---
 DATA_PATH = "materials/Combined_modelling.xlsx"
@@ -98,6 +99,9 @@ try:
         december_prediction = future_df.loc[f"{target_year}-12", "Produksi"]
 
         # Pastikan hasil prediksi adalah scalar
+        if isinstance(december_prediction, pd.Series):
+            december_prediction = december_prediction.iloc[0]
+
         if not pd.isnull(december_prediction):
             st.subheader("Hasil Prediksi")
             st.write(f"Prediksi Produksi Energi {energy_type} untuk Bulan Desember Tahun {target_year}:")
