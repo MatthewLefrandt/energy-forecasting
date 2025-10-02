@@ -194,11 +194,11 @@ with st.sidebar:
     st.markdown(f"### {ENERGY_ICONS.get(energy_type, '⚡')} {energy_type}")
 
     energy_descriptions = {
-        "Batu Bara": "Sumber energi fosil padat yang terbentuk dari sisa tumbuhan yang terkompresi selama jutaan tahun.",
-        "Gas Alam": "Sumber energi fosil berbentuk gas yang terdiri dari campuran hidrokarbon ringan.",
-        "Minyak Bumi": "Sumber energi fosil cair yang terbentuk dari sisa-sisa organisme laut purba.",
+        "Batu Bara": "Sumber energi fosil padat yang terbentuk dari sisa tumbuhan yang terkompresi.",
+        "Gas Alam": "Sumber energi fosil berbentuk gas yang terdiri dari campuran hidrokarbon.",
+        "Minyak Bumi": "Sumber energi fosil cair yang terbentuk dari sisa-sisa organisme laut.",
         "Biodiesel": "Bahan bakar terbarukan yang dibuat dari minyak nabati atau lemak hewan.",
-        "Fuel Ethanol": "Bahan bakar alkohol yang diproduksi dari fermentasi tanaman yang mengandung gula dan pati."
+        "Fuel Ethanol": "Bahan bakar alkohol yang diproduksi dari fermentasi tanaman."
     }
 
     st.info(energy_descriptions.get(energy_type, ""))
@@ -268,8 +268,8 @@ try:
 
                     # Data historis
                     fig.add_trace(go.Scatter(
-                        x=df.index, 
-                        y=df["Produksi"],
+                        x=list(df.index), 
+                        y=df["Produksi"].tolist(),
                         mode='lines+markers',
                         name='Data Historis',
                         line=dict(color=ENERGY_COLORS.get(energy_type, '#1E88E5'), width=2),
@@ -279,22 +279,31 @@ try:
                     # Data prediksi
                     if not future_df.empty:
                         fig.add_trace(go.Scatter(
-                            x=future_df.index, 
-                            y=future_df["Produksi"],
+                            x=list(future_df.index), 
+                            y=future_df["Produksi"].tolist(),
                             mode='lines+markers',
                             name='Prediksi',
                             line=dict(color='#FF5252', width=2, dash='dash'),
                             marker=dict(size=6, symbol='diamond')
                         ))
 
-                    # Garis vertikal pemisah
+                    # Garis vertikal pemisah (perbaikan untuk issue tanggal)
                     fig.add_vline(
                         x=df.index[-1], 
                         line_width=1, 
                         line_dash="dash", 
-                        line_color="gray",
-                        annotation_text="Mulai Prediksi",
-                        annotation_position="top right"
+                        line_color="gray"
+                    )
+
+                    # Tambahkan anotasi terpisah
+                    fig.add_annotation(
+                        x=df.index[-1],
+                        y=df["Produksi"].max(),
+                        text="Mulai Prediksi",
+                        showarrow=True,
+                        arrowhead=1,
+                        ax=40,
+                        ay=-40
                     )
 
                     # Layout
@@ -315,6 +324,12 @@ try:
                     )
 
                     st.plotly_chart(fig, use_container_width=True)
+
+                    # Tambahkan tabel ringkasan
+                    with st.expander("Tabel Data Prediksi", expanded=False):
+                        future_table = future_df.reset_index()
+                        future_table.columns = ["Tahun", "Produksi"]
+                        st.dataframe(future_table, use_container_width=True)
     else:
         # Prediksi untuk model SVR (data bulanan)
         future_df = forecast_production_svr(target_year, model, scaler, df)
@@ -435,14 +450,28 @@ try:
                         )
                     ))
 
-            # Garis vertikal pemisah
+            # Garis vertikal pemisah dengan perbaikan
+            # Gunakan pendekatan alternatif untuk menghindari error tanggal
+            last_year = df.index.year.max()
+            first_pred_year = last_year + 1
+            first_pred_date = f"{first_pred_year}-01-01"
+
             fig.add_vline(
-                x=pd.to_datetime(f"{df.index.year.max() + 1}-01-01"), 
+                x=pd.to_datetime(first_pred_date), 
                 line_width=1, 
                 line_dash="dash", 
-                line_color="gray",
-                annotation_text="Mulai Prediksi",
-                annotation_position="top right"
+                line_color="gray"
+            )
+
+            # Tambahkan anotasi terpisah
+            fig.add_annotation(
+                x=pd.to_datetime(first_pred_date),
+                y=df["Produksi"].mean() * 1.2,  # Posisikan di atas rata-rata
+                text="Mulai Prediksi",
+                showarrow=True,
+                arrowhead=1,
+                ax=40,
+                ay=-40
             )
 
             # Layout
@@ -475,7 +504,8 @@ except FileNotFoundError:
     st.error(f"File model atau data tidak ditemukan untuk energi {energy_type}.")
     st.info("Pastikan semua file model dan data tersedia di folder 'materials'.")
 except Exception as e:
-    st.error(f"Terjadi kesalahan: {e}")
+    st.error(f"Terjadi kesalahan: {str(e)}")
+    st.info("Coba pilih jenis energi lain atau sesuaikan parameter prediksi.")
 
 # --- FOOTER ---
 st.markdown('<div class="footer">', unsafe_allow_html=True)
