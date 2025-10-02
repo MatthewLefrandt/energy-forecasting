@@ -17,102 +17,79 @@ st.set_page_config(
 )
 
 # --- WELCOME POPUP ---
-# We'll use a cookie to track if the user has seen the popup
-popup_html = """
-<style>
-.popup-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.7);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 9999;
-}
+if 'popup_shown' not in st.session_state:
+    st.session_state.popup_shown = False
 
-.popup-content {
-    background: white;
-    width: 500px;
-    max-width: 90%;
-    padding: 30px;
-    border-radius: 10px;
-    box-shadow: 0 5px 30px rgba(0, 0, 0, 0.3);
-    text-align: center;
-}
+# Define a callback when the button is clicked
+def close_popup():
+    st.session_state.popup_shown = True
+    st.rerun()  # Rerun the app to reflect the change
 
-.popup-title {
-    font-size: 24px;
-    font-weight: bold;
-    color: #1E88E5;
-    margin-bottom: 15px;
-}
-
-.popup-message {
-    font-size: 16px;
-    line-height: 1.6;
-    margin-bottom: 25px;
-    color: #424242;
-}
-
-.popup-button {
-    background: #1E88E5;
-    color: white;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 5px;
-    font-size: 16px;
-    cursor: pointer;
-    transition: background 0.3s;
-}
-
-.popup-button:hover {
-    background: #1565C0;
-}
-
-.popup-emoji {
-    font-size: 40px;
-    margin-bottom: 15px;
-}
-</style>
-
-<div class="popup-overlay" id="welcomePopup">
-    <div class="popup-content">
-        <div class="popup-emoji">👋</div>
-        <div class="popup-title">Selamat Datang di Aplikasi Prediksi Produksi Energi!</div>
-        <div class="popup-message">
-            Untuk pengalaman terbaik, kami menyarankan Anda:
-            <br><br>
-            <b>1.</b> Gunakan <b>Light Mode</b> pada browser Anda
-            <br>
-            <b>2.</b> Atur <b>Zoom Browser</b> ke <b>75%</b> untuk tampilan optimal
-            <br><br>
-            Penyesuaian ini akan mencegah elemen tampilan saling tumpang tindih dan memastikan visualisasi data terlihat dengan sempurna.
-        </div>
-        <button class="popup-button" onclick="closePopup()">Mengerti, Lanjutkan</button>
-    </div>
-</div>
-
-<script>
-// Function to close popup and set cookie
-function closePopup() {
-    document.getElementById('welcomePopup').style.display = 'none';
-    localStorage.setItem('popupShown', 'true');
-}
-
-// Check if popup has been shown before
-document.addEventListener('DOMContentLoaded', function() {
-    if (localStorage.getItem('popupShown')) {
-        document.getElementById('welcomePopup').style.display = 'none';
+# Only show popup if it hasn't been dismissed
+if not st.session_state.popup_shown:
+    st.markdown("""
+    <style>
+    .popup-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
     }
-});
-</script>
-"""
 
-# Inject the popup HTML
-st.markdown(popup_html, unsafe_allow_html=True)
+    .popup-content {
+        background: white;
+        width: 500px;
+        max-width: 90%;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 5px 30px rgba(0, 0, 0, 0.3);
+        text-align: center;
+    }
+
+    .popup-title {
+        font-size: 24px;
+        font-weight: bold;
+        color: #1E88E5;
+        margin-bottom: 15px;
+    }
+
+    .popup-message {
+        font-size: 16px;
+        line-height: 1.6;
+        margin-bottom: 25px;
+        color: #424242;
+    }
+
+    .popup-emoji {
+        font-size: 40px;
+        margin-bottom: 15px;
+    }
+    </style>
+
+    <div class="popup-overlay">
+        <div class="popup-content">
+            <div class="popup-emoji">👋</div>
+            <div class="popup-title">Selamat Datang di Aplikasi Prediksi Produksi Energi!</div>
+            <div class="popup-message">
+                Untuk pengalaman terbaik, kami menyarankan Anda:
+                <br><br>
+                <b>1.</b> Gunakan <b>Light Mode</b> pada browser Anda
+                <br>
+                <b>2.</b> Atur <b>Zoom Browser</b> ke <b>75%</b> untuk tampilan optimal
+                <br><br>
+                Penyesuaian ini akan mencegah elemen tampilan saling tumpang tindih dan memastikan visualisasi data terlihat dengan sempurna.
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.button("Mengerti, Lanjutkan", on_click=close_popup, key="popup_button")
 
 # --- CUSTOM CSS ---
 st.markdown("""
@@ -164,7 +141,6 @@ SCALER_PATHS = {
     "Biodiesel": "materials/scaler_biodiesel.pkl",
     "Fuel Ethanol": "materials/scaler_fuel_ethanol.pkl"
 }
-
 # --- LOAD DATA ---
 @st.cache_data
 def load_data(energy_type):
