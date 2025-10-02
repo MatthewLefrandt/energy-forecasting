@@ -98,10 +98,10 @@ st.markdown("""
         font-weight: bold;
         color: #1E88E5;
         text-align: center;
-        padding: 20px 0;
+        padding: 20px 0 25px 0; /* Added more padding at bottom */
         background: linear-gradient(to right, rgba(30, 136, 229, 0.1), rgba(30, 136, 229, 0.2), rgba(30, 136, 229, 0.1));
         border-radius: 10px;
-        margin-bottom: 0;
+        margin-bottom: 20px;
         animation: pulse 2s infinite;
     }
     @keyframes pulse {
@@ -323,11 +323,13 @@ try:
                             year_prediction = year_prediction.iloc[0]
 
                         if not pd.isnull(year_prediction):
-                            # Format with commas for thousands and add unit
+                            # Format with commas for thousands and add unit inside the blue box
                             formatted_prediction = f"{year_prediction:,.2f}"
                             st.markdown(f"""
-                            <div class='prediction-value'>{formatted_prediction}</div>
-                            <div style='text-align: center; margin-top: -5px; font-size: 1rem; color: #666;'>Trilliun BTU</div>
+                            <div class='prediction-value'>
+                                {formatted_prediction}
+                                <div style='font-size: 1.2rem; margin-top: -10px;'>Trilliun BTU</div>
+                            </div>
                             """, unsafe_allow_html=True)
 
                             # Data ringkasan
@@ -440,11 +442,13 @@ try:
                     december_prediction = december_prediction.iloc[0]
 
                 if not pd.isnull(december_prediction):
-                    # Format with commas for thousands and add unit
+                    # Format with commas for thousands and add unit inside the blue box
                     formatted_prediction = f"{december_prediction:,.2f}"
                     st.markdown(f"""
-                    <div class='prediction-value'>{formatted_prediction}</div>
-                    <div style='text-align: center; margin-top: -5px; font-size: 1rem; color: #666;'>Trilliun BTU</div>
+                    <div class='prediction-value'>
+                        {formatted_prediction}
+                        <div style='font-size: 1.2rem; margin-top: -10px;'>Trilliun BTU</div>
+                    </div>
                     """, unsafe_allow_html=True)
 
                     # Data ringkasan
