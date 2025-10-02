@@ -29,15 +29,30 @@ st.markdown("""
         margin-bottom: 2rem;
     }
     .prediction-card {
-        background-color: #f5f7f9;
+        background-color: #f0f7ff;
+        border-left: 5px solid #1E88E5;
         padding: 20px;
-        border-radius: 10px;
+        border-radius: 5px;
         box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+        margin-top: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    .prediction-label {
+        font-size: 1rem;
+        color: #616161;
+        margin-bottom: 0.5rem;
     }
     .prediction-value {
-        font-size: 3rem;
+        font-size: 2.5rem;
         font-weight: bold;
         color: #1E88E5;
+        margin: 0;
+    }
+    .result-title {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #212121;
+        margin-bottom: 1rem;
     }
     .footer {
         margin-top: 3rem;
@@ -45,6 +60,9 @@ st.markdown("""
         color: #9e9e9e;
         font-size: 0.8rem;
         border-top: 1px solid #e0e0e0;
+    }
+    .metrics-container {
+        margin-top: 1.5rem;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -228,41 +246,6 @@ try:
             if not df.empty:
                 future_df = forecast_production_biodiesel(target_year, model, scaler, df)
 
-                # Tampilkan hasil
-                with col2:
-                    st.markdown(f"### Hasil Prediksi {target_year}")
-
-                    if target_year in future_df.index:
-                        year_prediction = future_df.loc[target_year, "Produksi"]
-                        if isinstance(year_prediction, pd.Series):
-                            year_prediction = year_prediction.iloc[0]
-
-                        if not pd.isnull(year_prediction):
-                            st.markdown('<div class="prediction-card">', unsafe_allow_html=True)
-                            st.markdown(f"<p>Produksi {energy_type} Tahun {target_year}:</p>", unsafe_allow_html=True)
-                            st.markdown(f'<p class="prediction-value">{year_prediction:.2f}</p>', unsafe_allow_html=True)
-                            st.markdown('</div>', unsafe_allow_html=True)
-
-                            # Data ringkasan
-                            st.markdown("### Ringkasan Data")
-                            last_actual = df["Produksi"].iloc[-1]
-                            growth = ((year_prediction - last_actual) / last_actual) * 100
-
-                            metrics_col1, metrics_col2 = st.columns(2)
-                            with metrics_col1:
-                                st.metric(
-                                    "Data Terakhir", 
-                                    f"{last_actual:.2f}", 
-                                    f"Tahun {df.index[-1]}"
-                                )
-                            with metrics_col2:
-                                st.metric(
-                                    "Pertumbuhan", 
-                                    f"{growth:.2f}%", 
-                                    f"Dari {df.index[-1]} ke {target_year}",
-                                    delta_color="normal" if growth >= 0 else "inverse"
-                                )
-
                 # Visualisasi
                 with col1:
                     st.markdown("### Visualisasi Prediksi")
@@ -334,53 +317,47 @@ try:
                         future_table = future_df.reset_index()
                         future_table.columns = ["Tahun", "Produksi"]
                         st.dataframe(future_table, use_container_width=True)
+
+                # Tampilkan hasil
+                with col2:
+                    # Hasil prediksi dalam satu blok utuh
+                    if target_year in future_df.index:
+                        year_prediction = future_df.loc[target_year, "Produksi"]
+                        if isinstance(year_prediction, pd.Series):
+                            year_prediction = year_prediction.iloc[0]
+
+                        if not pd.isnull(year_prediction):
+                            st.markdown('<div class="result-title">Hasil Prediksi</div>', unsafe_allow_html=True)
+
+                            st.markdown(f'''
+                            <div class="prediction-card">
+                                <div class="prediction-label">Produksi {energy_type} Tahun {target_year}:</div>
+                                <div class="prediction-value">{year_prediction:.2f}</div>
+                            </div>
+                            ''', unsafe_allow_html=True)
+
+                            # Data ringkasan
+                            st.markdown('<div class="result-title">Ringkasan Data</div>', unsafe_allow_html=True)
+                            last_actual = df["Produksi"].iloc[-1]
+                            growth = ((year_prediction - last_actual) / last_actual) * 100
+
+                            metrics_col1, metrics_col2 = st.columns(2)
+                            with metrics_col1:
+                                st.metric(
+                                    "Data Terakhir", 
+                                    f"{last_actual:.2f}", 
+                                    f"Tahun {df.index[-1]}"
+                                )
+                            with metrics_col2:
+                                st.metric(
+                                    "Pertumbuhan", 
+                                    f"{growth:.2f}%", 
+                                    f"Dari {df.index[-1]} ke {target_year}",
+                                    delta_color="normal" if growth >= 0 else "inverse"
+                                )
     else:
         # Prediksi untuk model SVR (data bulanan)
         future_df = forecast_production_svr(target_year, model, scaler, df)
-
-        # Tampilkan hasil
-        with col2:
-            st.markdown(f"### Hasil Prediksi {target_year}")
-
-            try:
-                december_prediction = future_df.loc[f"{target_year}-12", "Produksi"]
-                if isinstance(december_prediction, pd.Series):
-                    december_prediction = december_prediction.iloc[0]
-
-                if not pd.isnull(december_prediction):
-                    st.markdown('<div class="prediction-card">', unsafe_allow_html=True)
-                    st.markdown(f"<p>Produksi {energy_type} Desember {target_year}:</p>", unsafe_allow_html=True)
-                    st.markdown(f'<p class="prediction-value">{december_prediction:.2f}</p>', unsafe_allow_html=True)
-                    st.markdown('</div>', unsafe_allow_html=True)
-
-                    # Data ringkasan
-                    st.markdown("### Ringkasan Data")
-
-                    # Ambil data terakhir (Desember dari tahun terakhir data)
-                    last_year_data = df[df.index.year == df.index.year.max()]
-                    if not last_year_data.empty:
-                        last_actual = last_year_data["Produksi"].iloc[-1]
-                        last_date = last_year_data.index[-1]
-
-                        # Hitung pertumbuhan
-                        growth = ((december_prediction - last_actual) / last_actual) * 100
-
-                        metrics_col1, metrics_col2 = st.columns(2)
-                        with metrics_col1:
-                            st.metric(
-                                "Data Terakhir", 
-                                f"{last_actual:.2f}", 
-                                f"{last_date.strftime('%b %Y')}"
-                            )
-                        with metrics_col2:
-                            st.metric(
-                                "Pertumbuhan", 
-                                f"{growth:.2f}%", 
-                                f"Dari {last_date.strftime('%b %Y')} ke Des {target_year}",
-                                delta_color="normal" if growth >= 0 else "inverse"
-                            )
-            except (KeyError, Exception) as e:
-                st.warning(f"Tidak ada hasil prediksi untuk Desember {target_year}.")
 
         # Visualisasi
         with col1:
@@ -503,6 +480,52 @@ try:
                 yearly_future["Tahun"] = yearly_future["Tahun"].dt.year
                 yearly_future = yearly_future.rename(columns={"Tahun": "Tahun", "Produksi": "Produksi (rata-rata)"})
                 st.dataframe(yearly_future, use_container_width=True)
+
+        # Tampilkan hasil
+        with col2:
+            try:
+                december_prediction = future_df.loc[f"{target_year}-12", "Produksi"]
+                if isinstance(december_prediction, pd.Series):
+                    december_prediction = december_prediction.iloc[0]
+
+                if not pd.isnull(december_prediction):
+                    st.markdown('<div class="result-title">Hasil Prediksi</div>', unsafe_allow_html=True)
+
+                    st.markdown(f'''
+                    <div class="prediction-card">
+                        <div class="prediction-label">Produksi {energy_type} Desember {target_year}:</div>
+                        <div class="prediction-value">{december_prediction:.2f}</div>
+                    </div>
+                    ''', unsafe_allow_html=True)
+
+                    # Data ringkasan
+                    st.markdown('<div class="result-title">Ringkasan Data</div>', unsafe_allow_html=True)
+
+                    # Ambil data terakhir (Desember dari tahun terakhir data)
+                    last_year_data = df[df.index.year == df.index.year.max()]
+                    if not last_year_data.empty:
+                        last_actual = last_year_data["Produksi"].iloc[-1]
+                        last_date = last_year_data.index[-1]
+
+                        # Hitung pertumbuhan
+                        growth = ((december_prediction - last_actual) / last_actual) * 100
+
+                        metrics_col1, metrics_col2 = st.columns(2)
+                        with metrics_col1:
+                            st.metric(
+                                "Data Terakhir", 
+                                f"{last_actual:.2f}", 
+                                f"{last_date.strftime('%b %Y')}"
+                            )
+                        with metrics_col2:
+                            st.metric(
+                                "Pertumbuhan", 
+                                f"{growth:.2f}%", 
+                                f"Dari {last_date.strftime('%b %Y')}",
+                                delta_color="normal" if growth >= 0 else "inverse"
+                            )
+            except (KeyError, Exception) as e:
+                st.warning(f"Tidak ada hasil prediksi untuk Desember {target_year}.")
 
 except FileNotFoundError:
     st.error(f"File model atau data tidak ditemukan untuk energi {energy_type}.")
