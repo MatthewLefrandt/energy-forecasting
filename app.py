@@ -31,7 +31,7 @@ def load_data(energy_type):
     df = df.T.reset_index()
     df.columns = ['Tahun', 'Produksi']
     df = df[1:]
-    df["Tahun"] = df["Tahun"].astype(int)
+    df["Tahun"] = pd.to_numeric(df["Tahun"], errors='coerce')  # Pastikan tahun berupa angka
     df["Produksi"] = pd.to_numeric(df["Produksi"], errors='coerce')  # Pastikan semua nilai numerik
     df = df.set_index("Tahun")
     df = df.interpolate(method="linear")  # Mengisi nilai kosong dengan interpolasi linear
@@ -48,7 +48,7 @@ def forecast_production(year, model, scaler, data, energy_type):
     """Melakukan prediksi hingga bulan Desember tahun target."""
     if energy_type == "Biodiesel":
         # Prediksi tahunan untuk Biodiesel
-        last_year = data.index.max().year
+        last_year = data.index.max()  # Nilai maksimum dari index (tahun)
         future_years = list(range(last_year + 1, year + 1))
         recent_value = data["Produksi"].values[-1]
         future_preds = []
