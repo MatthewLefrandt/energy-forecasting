@@ -1,368 +1,94 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import joblib
+import pickle
+from sklearn.preprocessing import StandardScaler
 from datetime import datetime
-import warnings
-warnings.filterwarnings('ignore')
 
-# Set page configuration
-st.set_page_config(
-    page_title="Energy Forecasting App",
-    page_icon="⚡",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+# --- LOAD PRETRAINED MODEL AND SCALER ---
+MODEL_PATH = "C:/Users/u555804/Documents/BINUS/Skripsi/CODE - DEPLOYMENT/materials/svr_coal_model.pkl"
+SCALER_PATH = "C:/Users/u555804/Documents/BINUS/Skripsi/CODE - DEPLOYMENT/materials/scaler_coal.pkl"
+DATA_PATH = "C:/Users/u555804/Documents/BINUS/Skripsi/Combined_modelling.xlsx"
 
-# Custom CSS for better styling
-st.markdown("""
-<style>
-    .main-header {
-        font-size: 2.5rem;
-        font-weight: bold;
-        text-align: center;
-        margin-bottom: 2rem;
-        color: #1f77b4;
-    }
-    .energy-card {
-        background-color: #f0f2f6;
-        padding: 1rem;
-        border-radius: 10px;
-        margin: 1rem 0;
-    }
-    .prediction-result {
-        font-size: 1.5rem;
-        font-weight: bold;
-        color: #2e7d32;
-        text-align: center;
-        padding: 1rem;
-        background-color: #e8f5e8;
-        border-radius: 10px;
-        margin: 1rem 0;
-    }
-</style>
-""", unsafe_allow_html=True)
+# Load SVR model
+with open(MODEL_PATH, 'rb') as model_file:
+    svr_model = pickle.load(model_file)
 
-@st.cache_data
-def load_historical_data():
-    """Load historical data from Excel file"""
-    try:
-        df = pd.read_excel('materials/Combined_modelling.xlsx')
-        return df
-    except Exception as e:
-        st.error(f"Error loading data: {str(e)}")
-        return None
+# Load Scaler
+with open(SCALER_PATH, 'rb') as scaler_file:
+    scaler = pickle.load(scaler_file)
 
-@st.cache_resource
-def load_models():
-    """Load all trained models and scalers"""
-    models = {}
-    scalers = {}
-    
-    # Model files mapping
-    model_files = {
-        'biodiesel': 'materials/linreg_biodiesel_model.pkl',
-        'coal': 'materials/svr_coal_model.pkl',
-        'fuel_ethanol': 'materials/svr_fuel_ethanol_model.pkl',
-        'natural_gas': 'materials/svr_natural_gas_model.pkl',
-        'petroleum': 'materials/svr_petroleum_model.pkl'
-    }
-    
-    # Scaler files mapping
-    scaler_files = {
-        'biodiesel': 'materials/scaler_biodiesel.pkl',
-        'coal': 'materials/scaler_coal.pkl',
-        'fuel_ethanol': 'materials/scaler_fuel_ethanol.pkl',
-        'natural_gas': 'materials/scaler_natural_gas.pkl',
-        'petroleum': 'materials/scaler_petroleum.pkl'
-    }
-    
-    # Load models using joblib
-    for energy_type, file_path in model_files.items():
-        try:
-            models[energy_type] = joblib.load(file_path)
-            st.success(f"✅ Loaded {energy_type} model successfully")
-        except Exception as e:
-            st.warning(f"❌ Could not load {energy_type} model: {str(e)}")
-    
-    # Load scalers using joblib
-    for energy_type, file_path in scaler_files.items():
-        try:
-            scalers[energy_type] = joblib.load(file_path)
-            st.success(f"✅ Loaded {energy_type} scaler successfully")
-        except Exception as e:
-            st.warning(f"❌ Could not load {energy_type} scaler: {str(e)}")
-    
-    return models, scalers
+# --- LOAD DATA ---
+@st.cache
+def load_data():
+    df = pd.read_excel(DATA_PATH)
+    df = df[df["Jenis_Energi"] == "Batu Bara"].drop(columns=["Tipe_Aliran"])
+    df = df.T.reset_index()
+    df.columns = ['Tahun', 'Produksi']
+    df = df[1:]
+    df["Tahun"] = pd.to_datetime(df["Tahun"].astype(int), format='%Y')
+    df["Produksi"] = df["Produksi"].astype(float)
+    df = df.set_index("Tahun")
+    df = df.resample("MS").interpolate(method="linear")  # Resample ke bulanan
+    return df
 
-def create_monthly_data_with_interpolation(yearly_data, start_year=1980):
-    """Convert yearly data to monthly data with linear interpolation (matching training process)"""
-    # Create DataFrame with yearly data
-    years = list(range(start_year, start_year + len(yearly_data)))
-    df_yearly = pd.DataFrame({
-        'Tahun': years,
-        'Produksi': yearly_data
-    })
-    
-    # Convert to datetime and set as index
-    df_yearly['Tahun'] = pd.to_datetime(df_yearly['Tahun'], format='%Y')
-    df_yearly = df_yearly.set_index('Tahun')
-    
-    # Resample to monthly with linear interpolation (same as training)
-    df_monthly = df_yearly.resample('MS').interpolate(method='linear')
-    
-    # Convert back to simple format for processing
-    monthly_data = []
-    for date, row in df_monthly.iterrows():
-        monthly_data.append({
-            'year': date.year,
-            'month': date.month,
-            'value': row['Produksi']
-        })
-    
-    return pd.DataFrame(monthly_data)
+df = load_data()
 
-def get_lagged_features_corrected(data, energy_type, target_year):
-    """Get lagged features in correct order (Lag_1, Lag_2, ..., Lag_12)"""
-    # Use December as the target month
-    target_month = 12
-    
-    if energy_type == 'biodiesel':
-        # Biodiesel uses 1 lag (annual data)
-        lag_periods = [1]
-    else:
-        # Other energy types use 12 lags (monthly data) in correct order
-        lag_periods = list(range(1, 13))  # Lag_1 to Lag_12
-    
-    features = []
-    
-    # Convert target to datetime
-    target_date = pd.Timestamp(year=target_year, month=target_month, day=1)
-    
-    for lag in lag_periods:
-        if energy_type == 'biodiesel':
-            # For biodiesel, lag by years
-            lag_date = target_date - pd.DateOffset(years=lag)
-        else:
-            # For others, lag by months (Lag_1 means 1 month back, etc.)
-            lag_date = target_date - pd.DateOffset(months=lag)
-        
-        # Find the corresponding value in historical data
-        matching_data = data[
-            (data['year'] == lag_date.year) & 
-            (data['month'] == lag_date.month)
-        ]
-        
-        if not matching_data.empty:
-            features.append(matching_data['value'].iloc[0])
-        else:
-            # Find the closest available data
-            prev_data = data[
-                (data['year'] < lag_date.year) | 
-                ((data['year'] == lag_date.year) & (data['month'] <= lag_date.month))
-            ].sort_values(['year', 'month'])
-            
-            if not prev_data.empty:
-                features.append(prev_data['value'].iloc[-1])
-            else:
-                # Use mean as fallback
-                if not data.empty:
-                    features.append(data['value'].mean())
-                else:
-                    features.append(0)
-    
-    # Debug information
-    st.write(f"**Debug Info for {energy_type}:**")
-    st.write(f"Target: {target_year}-{target_month}")
-    st.write(f"Lagged features shape: {np.array(features).shape}")
-    st.write(f"Lagged features (Lag_1 to Lag_{len(features)}): {[f'{f:.2f}' for f in features]}")
-    
-    return np.array(features).reshape(1, -1)
+# --- STREAMLIT APP ---
+st.title("Prediksi Produksi Energi Batu Bara")
+st.write("Aplikasi ini memprediksi produksi energi batu bara berdasarkan model SVR yang telah dilatih.")
 
-def moving_average_smoothing(prediction, window=6):
-    """Apply moving average smoothing (post-processing like in training)"""
-    # For single prediction, return as is (smoothing needs multiple points)
-    return prediction
+# --- USER INPUT ---
+st.sidebar.header("Input Prediksi")
+target_year = st.sidebar.number_input("Masukkan Tahun Prediksi", min_value=2024, max_value=2050, value=2030, step=1)
 
-def make_prediction(energy_type, year, models, scalers, historical_data):
-    """Make prediction for specified energy type and year"""
-    try:
-        # Energy type mapping for data filtering
-        energy_mapping = {
-            'coal': 'Batu Bara',
-            'natural_gas': 'Gas Alam',
-            'petroleum': 'Minyak Bumi',
-            'biodiesel': 'Biodiesel',
-            'fuel_ethanol': 'Fuel Ethanol'
-        }
-        
-        # Get historical data for the specific energy type
-        energy_data = historical_data[historical_data['Jenis_Energi'] == energy_mapping[energy_type]]
-        
-        if energy_data.empty:
-            return None, "No historical data found for this energy type"
-        
-        # Get production data (assuming 'Produksi' type)
-        prod_data = energy_data[energy_data['Tipe_Aliran'] == 'Produksi']
-        
-        if prod_data.empty:
-            return None, "No production data found"
-        
-        # Extract yearly values
-        year_columns = [col for col in prod_data.columns if str(col).isdigit()]
-        yearly_values = []
-        
-        for col in year_columns:
-            value = prod_data[col].iloc[0]
-            yearly_values.append(value if pd.notna(value) else 0)
-        
-        # Create monthly data with interpolation if needed (matching training process)
-        if energy_type != 'biodiesel':
-            monthly_df = create_monthly_data_with_interpolation(yearly_values, start_year=int(year_columns[0]))
-        else:
-            # For biodiesel, keep as yearly data
-            years = [int(col) for col in year_columns]
-            monthly_df = pd.DataFrame({
-                'year': years,
-                'month': [12] * len(years),  # Use December for yearly data consistency
-                'value': yearly_values
-            })
-        
-        # Debug: show historical data info
-        st.write(f"**Historical data shape:** {monthly_df.shape}")
-        st.write(f"**Year range:** {monthly_df['year'].min()} - {monthly_df['year'].max()}")
-        st.write(f"**Value range:** {monthly_df['value'].min():.2f} - {monthly_df['value'].max():.2f}")
-        st.write(f"**Sample recent data:**")
-        st.dataframe(monthly_df.tail(10))
-        
-        # Get lagged features (using corrected method)
-        features = get_lagged_features_corrected(monthly_df, energy_type, year)
-        
-        # Debug: show raw features
-        st.write(f"**Raw features shape:** {features.shape}")
-        
-        # Scale features
-        if energy_type in scalers and scalers[energy_type] is not None:
-            features_scaled = scalers[energy_type].transform(features)
-            st.write(f"**Scaled features sample:** {[f'{f:.4f}' for f in features_scaled[0][:5]]}")
-        else:
-            features_scaled = features
-            st.warning(f"No scaler available for {energy_type}, using raw features")
-        
-        # Make prediction
-        if energy_type in models and models[energy_type] is not None:
-            raw_prediction = models[energy_type].predict(features_scaled)[0]
-            
-            # Apply smoothing (though for single prediction, it won't change much)
-            final_prediction = moving_average_smoothing(raw_prediction)
-            
-            # Debug: show model info
-            st.write(f"**Model type:** {type(models[energy_type])}")
-            st.write(f"**Raw prediction:** {raw_prediction:.2f}")
-            st.write(f"**Final prediction:** {final_prediction:.2f}")
-            
-            return final_prediction, None
-        else:
-            return None, f"Model not found for {energy_type}"
-            
-    except Exception as e:
-        return None, str(e)
+# --- FORECAST FUNCTION ---
+def forecast_production(year, model, scaler, data):
+    # Hitung jumlah bulan dari data terakhir hingga target tahun
+    last_date = data.index[-1]
+    target_date = pd.to_datetime(f"{year}-12-01")
+    future_months = pd.date_range(start=last_date + pd.offsets.MonthBegin(1), end=target_date, freq="MS")
 
-def main():
-    # Header
-    st.markdown('<h1 class="main-header">⚡ Energy Forecasting System</h1>', unsafe_allow_html=True)
-    
-    # Load data and models
-    with st.spinner("Loading models and data..."):
-        historical_data = load_historical_data()
-        models, scalers = load_models()
-    
-    if historical_data is None:
-        st.error("Failed to load historical data. Please check the file path.")
-        return
-    
-    # Sidebar for inputs
-    st.sidebar.title("Prediction Parameters")
-    
-    # Energy type selection
-    energy_types = {
-        'Coal (Batu Bara)': 'coal',
-        'Natural Gas (Gas Alam)': 'natural_gas',
-        'Petroleum (Minyak Bumi)': 'petroleum',
-        'Biodiesel': 'biodiesel',
-        'Fuel Ethanol': 'fuel_ethanol'
-    }
-    
-    selected_energy = st.sidebar.selectbox(
-        "Select Energy Type:",
-        list(energy_types.keys())
-    )
-    
-    # Year selection only
-    current_year = datetime.now().year
-    year = st.sidebar.number_input(
-        "Target Year:",
-        min_value=2024,
-        max_value=2050,
-        value=current_year,
-        step=1
-    )
-    
-    # Prediction button
-    if st.sidebar.button("🔮 Make Prediction", type="primary"):
-        energy_key = energy_types[selected_energy]
-        
-        with st.spinner("Making prediction..."):
-            prediction, error = make_prediction(
-                energy_key, year, models, scalers, historical_data
-            )
-        
-        if error:
-            st.error(f"Prediction failed: {error}")
-        else:
-            # Display results
-            col1, col2, col3 = st.columns([1, 2, 1])
-            
-            with col2:
-                st.markdown(
-                    f'<div class="prediction-result">'
-                    f'Predicted {selected_energy} Production<br>'
-                    f'<span style="font-size: 2rem;">{prediction:,.2f}</span><br>'
-                    f'for Year {year}'
-                    f'</div>',
-                    unsafe_allow_html=True
-                )
-    
-    # Information section
-    st.markdown("---")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.markdown("""
-        **Lagging Features:**
-        - **Biodiesel**: 1 year lag
-        - **Other energies**: 12 months lag
-        """)
-    
-    with col2:
-        st.markdown("""
-        **Prediction Target:**
-        - Predictions are made for December of the target year
-        - Based on historical production data
-        """)
-    
-    # Historical data preview
-    if st.checkbox("Show Historical Data Preview"):
-        st.markdown("### 📈 Historical Data")
-        
-        # Show a sample of the data
-        if historical_data is not None:
-            # Display basic info about the dataset
-            st.write(f"Dataset shape: {historical_data.shape}")
-            st.dataframe(historical_data.head(10))
-        else:
-            st.warning("No historical data available")
+    # Ambil 12 nilai terakhir sebagai input awal
+    recent_values = data["Produksi"].values[-12:].tolist()
+    future_preds = []
 
-if __name__ == "__main__":
-    main()
+    for _ in range(len(future_months)):
+        # Buat input lag 12 bulan
+        lag_input = np.array(recent_values[-12:]).reshape(1, -1)
+        lag_scaled = scaler.transform(lag_input)
+        # Prediksi menggunakan model
+        pred = model.predict(lag_scaled)[0]
+        future_preds.append(pred)
+        recent_values.append(pred)
+
+    # Gabungkan prediksi dengan index waktu
+    future_df = pd.DataFrame({
+        "Tahun": future_months,
+        "Produksi": future_preds
+    }).set_index("Tahun")
+
+    return future_df
+
+# --- RUN FORECAST ---
+future_df = forecast_production(target_year, svr_model, scaler, df)
+
+# --- DISPLAY RESULTS ---
+st.subheader("Hasil Prediksi")
+st.write(f"Prediksi Produksi Energi Batu Bara untuk Tahun {target_year}:")
+st.write(f"{future_df.loc[future_df.index[-1], 'Produksi']:.2f}")
+
+# --- PLOT RESULTS ---
+import matplotlib.pyplot as plt
+
+st.subheader("Visualisasi Prediksi")
+plt.figure(figsize=(12, 6))
+plt.plot(df.index, df["Produksi"], label="Data Aktual", color="blue")
+plt.plot(future_df.index, future_df["Produksi"], label="Prediksi", color="red", linestyle="--")
+plt.axvline(x=pd.to_datetime("2024-01-01"), color="black", linestyle=":", label="Awal Prediksi")
+plt.title("Prediksi Produksi Energi Batu Bara")
+plt.xlabel("Tahun")
+plt.ylabel("Produksi")
+plt.grid(True)
+plt.legend()
+st.pyplot(plt)
