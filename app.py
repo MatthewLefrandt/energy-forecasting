@@ -178,8 +178,8 @@ with st.sidebar:
     )
 
     min_year = 2025
-    max_year = 2050
-    default_year = 2030
+    max_year = 2100
+    default_year = 2026
 
     target_year = st.slider(
         "Tahun Prediksi", 
