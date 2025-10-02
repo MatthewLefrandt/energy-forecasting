@@ -13,13 +13,83 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+# --- FORCE LIGHT MODE ---
+# Teknik untuk memaksa light mode dengan memodifikasi class dan warna secara komprehensif
+force_light_mode = """
+<script>
+    // Fungsi untuk memaksa light mode
+    function forceLightMode() {
+        // Tunggu DOM content loaded
+        document.addEventListener("DOMContentLoaded", function() {
+            // Hapus class dark dari body
+            document.body.classList.remove('dark');
+            document.body.classList.add('light');
+
+            // Set background dan warna text
+            document.body.style.backgroundColor = '#FFFFFF';
+            document.body.style.color = '#262730';
+
+            // Apply style changes
+            const style = document.createElement('style');
+            style.innerHTML = `
+                .stApp {
+                    background-color: #FFFFFF !important;
+                    color: #262730 !important;
+                }
+                .st-emotion-cache-czk5ss {
+                    background-color: #FFFFFF !important;
+                }
+                .st-emotion-cache-16txtl3 {
+                    background-color: #F0F2F6 !important;
+                    color: #262730 !important;
+                }
+                .st-emotion-cache-10trblm {
+                    color: #262730 !important;
+                }
+                .st-emotion-cache-1gulkj5 {
+                    color: #262730 !important;
+                }
+                /* Sidebar */
+                .st-emotion-cache-1cypcdb {
+                    background-color: #F0F2F6 !important;
+                }
+                /* Semua text */
+                p, h1, h2, h3, h4, h5, h6, span, div {
+                    color: #262730 !important;
+                }
+                /* Input fields */
+                .st-emotion-cache-75wb8s {
+                    background-color: #FFFFFF !important;
+                    color: #262730 !important;
+                }
+                /* Buttons */
+                .st-emotion-cache-jgf8ql {
+                    background-color: #FFFFFF !important;
+                    color: #262730 !important;
+                }
+            `;
+            document.head.appendChild(style);
+        });
+
+        // Ulangi setiap 500ms untuk mengatasi perubahan dinamis
+        setTimeout(forceLightMode, 500);
+    }
+
+    // Jalankan fungsi
+    forceLightMode();
+</script>
+"""
+
 # --- CUSTOM CSS ---
-# Gunakan string tunggal untuk menghindari masalah tokenisasi
 css = """
 <style>
+body {
+    background-color: #FFFFFF !important;
+    color: #262730 !important;
+}
 .stApp {
-    background-color: #FFFFFF;
-    color: #000000;
+    background-color: #FFFFFF !important;
+    color: #262730 !important;
 }
 .main-header {
     font-size: 2.5rem;
@@ -32,7 +102,7 @@ css = """
     margin-bottom: 2rem;
 }
 .prediction-card {
-    background-color: #f0f7ff;
+    background-color: #f0f7ff !important;
     border-left: 5px solid #1E88E5;
     padding: 20px;
     border-radius: 5px;
@@ -64,9 +134,33 @@ css = """
     font-size: 0.8rem;
     border-top: 1px solid #e0e0e0;
 }
+/* Override plotly dark theme */
+.js-plotly-plot .plotly .main-svg {
+    background: white !important;
+}
+.js-plotly-plot .plotly .bg {
+    fill: white !important;
+}
+.js-plotly-plot .plotly .ytick text,
+.js-plotly-plot .plotly .xtick text,
+.js-plotly-plot .plotly .gtitle,
+.js-plotly-plot .plotly .axislayer-above text {
+    fill: #262730 !important;
+}
+.js-plotly-plot .plotly .xaxislayer-above path,
+.js-plotly-plot .plotly .yaxislayer-above path {
+    stroke: #262730 !important;
+}
+/* Override dark theme for tables */
+.stDataFrame {
+    background-color: white !important;
+    color: #262730 !important;
+}
 </style>
 """
-st.markdown(css, unsafe_allow_html=True)
+
+# Gabungkan CSS dan JavaScript
+st.markdown(css + force_light_mode, unsafe_allow_html=True)
 
 # --- PATHS ---
 DATA_PATH = "materials/Combined_modelling.xlsx"
