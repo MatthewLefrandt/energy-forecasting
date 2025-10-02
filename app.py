@@ -178,8 +178,8 @@ with st.sidebar:
     )
 
     min_year = 2025
-    max_year = 2100
-    default_year = 2026
+    max_year = 2100  # Diubah dari 2050 menjadi 2100
+    default_year = 2030
 
     target_year = st.slider(
         "Tahun Prediksi", 
@@ -187,12 +187,12 @@ with st.sidebar:
         max_value=max_year, 
         value=default_year,
         step=1,
-        help="Pilih tahun untuk memprediksi produksi energi"
+        help="Pilih tahun untuk memprediksi produksi energi hingga 2100"
     )
 
     # Tambahkan peringatan untuk prediksi jangka sangat panjang
-    if target_year > 2030:
-    st.sidebar.warning(f"Prediksi hingga tahun {target_year} merupakan ekstrapolasi jangka sangat panjang. Hasilnya mungkin kurang akurat.")
+    if target_year > 2050:
+        st.sidebar.warning(f"Prediksi hingga tahun {target_year} merupakan ekstrapolasi jangka sangat panjang. Hasilnya mungkin kurang akurat.")
 
     st.markdown("---")
     st.markdown(f"### {ENERGY_ICONS.get(energy_type, '⚡')} {energy_type}")
