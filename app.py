@@ -82,10 +82,10 @@ future_df = forecast_production(target_year, svr_model, scaler, df)
 # --- DISPLAY RESULTS ---
 try:
     # Ambil hasil prediksi untuk bulan Desember di tahun target
-    december_prediction = future_df.loc[future_df.index.month == 12].loc[f"{target_year}-12", "Produksi"]
+    december_prediction = future_df.loc[f"{target_year}-12", "Produksi"]
 
-    # Pastikan hasil prediksi adalah numerik
-    if pd.notnull(december_prediction):
+    # Pastikan hasil prediksi adalah scalar
+    if not pd.isnull(december_prediction):
         st.subheader("Hasil Prediksi")
         st.write(f"Prediksi Produksi Energi Batu Bara untuk Bulan Desember Tahun {target_year}:")
         st.write(f"{december_prediction:.2f}")
