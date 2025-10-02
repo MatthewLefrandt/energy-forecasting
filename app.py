@@ -20,10 +20,81 @@ st.set_page_config(
 if 'popup_shown' not in st.session_state:
     st.session_state.popup_shown = False
 
-# Define a callback when the button is clicked
+# Define a callback for closing the popup
 def close_popup():
     st.session_state.popup_shown = True
-    st.rerun()  # Rerun the app to reflect the change
+    st.rerun()
+
+# Only show popup if it hasn't been dismissed
+if not st.session_state.popup_shown:
+    # This popup uses HTML/CSS/JS for a true modal overlay effect
+    popup_html = """
+    <style>
+    .popup-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+    }
+
+    .popup-content {
+        background: white;
+        width: 500px;
+        max-width: 90%;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 5px 30px rgba(0, 0, 0, 0.3);
+        text-align: center;
+    }
+
+    .popup-title {
+        font-size: 24px;
+        font-weight: bold;
+        color: #1E88E5;
+        margin-bottom: 15px;
+    }
+
+    .popup-message {
+        font-size: 16px;
+        line-height: 1.6;
+        margin-bottom: 25px;
+        color: #424242;
+    }
+
+    .popup-emoji {
+        font-size: 40px;
+        margin-bottom: 15px;
+    }
+    </style>
+
+    <div class="popup-overlay" id="welcomePopup">
+        <div class="popup-content">
+            <div class="popup-emoji">👋</div>
+            <div class="popup-title">Selamat Datang di Aplikasi Prediksi Produksi Energi!</div>
+            <div class="popup-message">
+                Untuk pengalaman terbaik, kami menyarankan Anda:
+                <br><br>
+                <b>1.</b> Gunakan <b>Light Mode</b> pada browser Anda
+                <br>
+                <b>2.</b> Atur <b>Zoom Browser</b> ke <b>75%</b> untuk tampilan optimal
+                <br><br>
+                Penyesuaian ini akan mencegah elemen tampilan saling tumpang tindih dan memastikan visualisasi data terlihat dengan sempurna.
+            </div>
+        </div>
+    </div>
+    """
+
+    st.markdown(popup_html, unsafe_allow_html=True)
+
+    # Add a button for closing the popup
+    if st.button("Mengerti, Lanjutkan", key="popup_button"):
+        close_popup()
 
 # --- CUSTOM CSS ---
 st.markdown("""
@@ -56,8 +127,15 @@ st.markdown("""
         font-size: 0.8rem;
         border-top: 1px solid #e0e0e0;
     }
+
+    /* Hide the popup button until it's in view */
+    .stButton button {
+        z-index: 10000;
+        position: relative;
+    }
 </style>
 """, unsafe_allow_html=True)
+
 
 # Only show popup if it hasn't been dismissed
 if not st.session_state.popup_shown:
