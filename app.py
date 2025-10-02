@@ -6,9 +6,9 @@ from sklearn.preprocessing import StandardScaler
 from datetime import datetime
 
 # --- LOAD PRETRAINED MODEL AND SCALER ---
-MODEL_PATH = "energy-forecasting/materials/svr_coal_model.pkl"
-SCALER_PATH = "energy-forecasting/materials/scaler_coal.pkl"
-DATA_PATH = "energy-forecasting/materials/Combined_modelling.xlsx"
+MODEL_PATH = "materials/svr_coal_model.pkl"
+SCALER_PATH = "materials/scaler_coal.pkl"
+DATA_PATH = "materials/Combined_modelling.xlsx"
 
 # Load SVR model
 with open(MODEL_PATH, 'rb') as model_file:
