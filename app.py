@@ -190,6 +190,10 @@ with st.sidebar:
         help="Pilih tahun untuk memprediksi produksi energi"
     )
 
+    # Tambahkan peringatan untuk prediksi jangka sangat panjang
+    if target_year > 2030:
+    st.sidebar.warning(f"Prediksi hingga tahun {target_year} merupakan ekstrapolasi jangka sangat panjang. Hasilnya mungkin kurang akurat.")
+
     st.markdown("---")
     st.markdown(f"### {ENERGY_ICONS.get(energy_type, '⚡')} {energy_type}")
 
