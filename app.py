@@ -12,20 +12,41 @@ st.set_page_config(
     page_title="Prediksi Produksi Energi",
     page_icon="⚡",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded",
+    menu_items={
+        'Get Help': None,
+        'Report a bug': None,
+        'About': 'Aplikasi Prediksi Produksi Energi'
+    }
 )
 
 # --- CUSTOM CSS ---
 st.markdown("""
 <style>
+    /* Force light mode */
+    .stApp {
+        background-color: #FFFFFF;
+        color: #000000;
+    }
+
+    /* Increase spacing between chart title and content */
+    .js-plotly-plot .plotly .main-svg {
+        margin-top: 20px !important;
+    }
+
+    /* Ensure text is visible in light mode */
+    p, h1, h2, h3, h4, h5, h6, .css-145kmo2 {
+        color: #262730 !important;
+    }
+
     .main-header {
         font-size: 2.5rem;
-        color: #1E88E5;
+        color: #1E88E5 !important;
         margin-bottom: 0.5rem;
     }
     .sub-header {
         font-size: 1.1rem;
-        color: #424242;
+        color: #424242 !important;
         margin-bottom: 2rem;
     }
     .prediction-card {
@@ -39,25 +60,25 @@ st.markdown("""
     }
     .prediction-label {
         font-size: 1rem;
-        color: #616161;
+        color: #616161 !important;
         margin-bottom: 0.5rem;
     }
     .prediction-value {
         font-size: 2.5rem;
         font-weight: bold;
-        color: #1E88E5;
+        color: #1E88E5 !important;
         margin: 0;
     }
     .result-title {
         font-size: 1.5rem;
         font-weight: bold;
-        color: #212121;
+        color: #212121 !important;
         margin-bottom: 1rem;
     }
     .footer {
         margin-top: 3rem;
         padding-top: 1rem;
-        color: #9e9e9e;
+        color: #9e9e9e !important;
         font-size: 0.8rem;
         border-top: 1px solid #e0e0e0;
     }
@@ -196,7 +217,7 @@ with st.sidebar:
     )
 
     min_year = 2025
-    max_year = 2100  # Diubah dari 2050 menjadi 2100
+    max_year = 2100
     default_year = 2030
 
     target_year = st.slider(
@@ -274,40 +295,37 @@ try:
                             marker=dict(size=6, symbol='diamond')
                         ))
 
-                    # Garis vertikal pemisah (perbaikan untuk issue tanggal)
+                    # Garis vertikal pemisah (tanpa panah)
                     fig.add_vline(
                         x=df.index[-1], 
                         line_width=1, 
                         line_dash="dash", 
-                        line_color="gray"
+                        line_color="gray",
+                        annotation=dict(
+                            text="Mulai Prediksi",
+                            font=dict(color="gray", size=12),
+                            showarrow=False,
+                            yshift=10
+                        )
                     )
 
-                    # Tambahkan anotasi terpisah
-                    fig.add_annotation(
-                        x=df.index[-1],
-                        y=df["Produksi"].max(),
-                        text="Mulai Prediksi",
-                        showarrow=True,
-                        arrowhead=1,
-                        ax=40,
-                        ay=-40
-                    )
-
-                    # Layout
+                    # Layout dengan padding atas yang lebih besar
                     fig.update_layout(
                         title=f"Produksi {energy_type} (Historis dan Prediksi)",
                         xaxis_title="Tahun",
                         yaxis_title="Produksi",
                         template="plotly_white",
-                        height=500,
+                        height=550,  # Tambah tinggi untuk memberikan ruang lebih
                         hovermode="x unified",
                         legend=dict(
                             orientation="h",
                             yanchor="bottom",
-                            y=1.02,
+                            y=1.05,  # Geser legend ke atas
                             xanchor="right",
                             x=1
-                        )
+                        ),
+                        margin=dict(t=80, b=50, l=50, r=30),  # Tambahkan margin atas yang lebih besar
+                        autosize=True
                     )
 
                     st.plotly_chart(fig, use_container_width=True)
@@ -441,40 +459,37 @@ try:
                 x=pd.to_datetime(first_pred_date), 
                 line_width=1, 
                 line_dash="dash", 
-                line_color="gray"
+                line_color="gray",
+                annotation=dict(
+                    text="Mulai Prediksi",
+                    font=dict(color="gray", size=12),
+                    showarrow=False,
+                    yshift=10
+                )
             )
 
-            # Tambahkan anotasi terpisah
-            fig.add_annotation(
-                x=pd.to_datetime(first_pred_date),
-                y=df["Produksi"].mean() * 1.2,  # Posisikan di atas rata-rata
-                text="Mulai Prediksi",
-                showarrow=True,
-                arrowhead=1,
-                ax=40,
-                ay=-40
-            )
-
-            # Layout
+            # Layout dengan padding atas yang lebih besar
             fig.update_layout(
                 title=f"Produksi {energy_type} (Historis dan Prediksi)",
                 xaxis_title="Tahun",
                 yaxis_title="Produksi",
                 template="plotly_white",
-                height=500,
+                height=550,  # Tambah tinggi untuk memberikan ruang lebih
                 hovermode="x unified",
                 legend=dict(
                     orientation="h",
                     yanchor="bottom",
-                    y=1.02,
+                    y=1.05,  # Geser legend ke atas
                     xanchor="right",
                     x=1
-                )
+                ),
+                margin=dict(t=80, b=50, l=50, r=30),  # Tambahkan margin atas yang lebih besar
+                autosize=True
             )
 
             st.plotly_chart(fig, use_container_width=True)
 
-            # Tambah tabel ringkasan (opsional, bisa dihide secara default)
+            # Tambah tabel ringkasan
             with st.expander("Tabel Data Prediksi", expanded=False):
                 yearly_future = future_df.resample('Y').mean().reset_index()
                 yearly_future["Tahun"] = yearly_future["Tahun"].dt.year
