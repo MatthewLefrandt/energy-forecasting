@@ -16,99 +16,92 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- WELCOME POPUP ---
+# --- WELCOME POPUP USING SESSION STATE ---
 if 'popup_shown' not in st.session_state:
     st.session_state.popup_shown = False
 
-# Define a callback for closing the popup
+# Function to close popup
 def close_popup():
     st.session_state.popup_shown = True
     st.rerun()
 
-# Only show popup if it hasn't been dismissed
+# Show popup if it hasn't been dismissed
 if not st.session_state.popup_shown:
-    # This popup uses HTML/CSS/JS for a true modal overlay effect
-    popup_html = """
-    <style>
-    .popup-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.7);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 9999;
-    }
+    # Create a container for the popup
+    popup_container = st.container()
 
-    .popup-content {
-        background: white;
-        width: 500px;
-        max-width: 90%;
-        padding: 30px;
-        border-radius: 10px;
-        box-shadow: 0 5px 30px rgba(0, 0, 0, 0.3);
-        text-align: center;
-    }
+    with popup_container:
+        # Add custom styling for the popup
+        st.markdown("""
+        <style>
+            .popup-container {
+                background-color: rgba(0, 0, 0, 0.8);
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                z-index: 9999;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                padding: 20px;
+            }
+            .popup-content {
+                background-color: white;
+                border-radius: 10px;
+                box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+                padding: 30px;
+                max-width: 600px;
+                width: 100%;
+                text-align: center;
+            }
+            .popup-title {
+                font-size: 24px;
+                font-weight: bold;
+                color: #1E88E5;
+                margin-bottom: 15px;
+            }
+            .popup-emoji {
+                font-size: 40px;
+                margin-bottom: 10px;
+            }
+            .stButton>button {
+                background-color: #1E88E5;
+                color: white;
+                font-weight: bold;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                margin-top: 20px;
+            }
+            .stButton>button:hover {
+                background-color: #1976D2;
+            }
+        </style>
+        """, unsafe_allow_html=True)
 
-    .popup-title {
-        font-size: 24px;
-        font-weight: bold;
-        color: #1E88E5;
-        margin-bottom: 15px;
-    }
+        # Create columns to center the popup content
+        col1, col2, col3 = st.columns([1, 3, 1])
 
-    .popup-message {
-        font-size: 16px;
-        line-height: 1.6;
-        margin-bottom: 25px;
-        color: #424242;
-    }
-
-    .popup-emoji {
-        font-size: 40px;
-        margin-bottom: 15px;
-    }
-
-    /* Style for the popup button container */
-    .popup-button-container {
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, 120px);
-        z-index: 10000;
-    }
-    </style>
-
-    <div class="popup-overlay" id="welcomePopup">
-        <div class="popup-content">
-            <div class="popup-emoji">👋</div>
-            <div class="popup-title">Selamat Datang di Aplikasi Prediksi Produksi Energi!</div>
-            <div class="popup-message">
-                Untuk pengalaman terbaik, kami menyarankan Anda:
-                <br><br>
-                <b>1.</b> Gunakan <b>Light Mode</b> pada browser Anda
-                <br>
-                <b>2.</b> Atur <b>Zoom Browser</b> ke <b>75%</b> untuk tampilan optimal
-                <br><br>
-                Penyesuaian ini akan mencegah elemen tampilan saling tumpang tindih dan memastikan visualisasi data terlihat dengan sempurna.
-            </div>
-        </div>
-    </div>
-    <div class="popup-button-container" id="popupButtonContainer"></div>
-    """
-
-    st.markdown(popup_html, unsafe_allow_html=True)
-
-    # Create a container div for the button with custom CSS
-    button_container = st.container()
-    with button_container:
-        col1, col2, col3 = st.columns([1, 1, 1])
         with col2:
-            if st.button("Mengerti, Lanjutkan", key="popup_button"):
+            st.markdown('<div class="popup-content">', unsafe_allow_html=True)
+            st.markdown('<div class="popup-emoji">👋</div>', unsafe_allow_html=True)
+            st.markdown('<div class="popup-title">Selamat Datang di Aplikasi Prediksi Produksi Energi!</div>', unsafe_allow_html=True)
+            st.markdown("""
+            Untuk pengalaman terbaik, kami menyarankan Anda:
+
+            1. Gunakan **Light Mode** pada browser Anda
+            2. Atur **Zoom Browser** ke **75%** untuk tampilan optimal
+
+            Penyesuaian ini akan mencegah elemen tampilan saling tumpang tindih dan memastikan visualisasi data terlihat dengan sempurna.
+            """)
+
+            if st.button("Mengerti, Lanjutkan"):
                 close_popup()
+
+            st.markdown('</div>', unsafe_allow_html=True)
 
 # --- CUSTOM CSS ---
 st.markdown("""
