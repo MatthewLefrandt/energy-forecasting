@@ -101,7 +101,7 @@ st.markdown("""
         padding: 20px 0;
         background: linear-gradient(to right, rgba(30, 136, 229, 0.1), rgba(30, 136, 229, 0.2), rgba(30, 136, 229, 0.1));
         border-radius: 10px;
-        margin-bottom: 20px;
+        margin-bottom: 0;
         animation: pulse 2s infinite;
     }
     @keyframes pulse {
@@ -169,11 +169,18 @@ def load_data(energy_type):
         df = df.resample("MS").interpolate(method="linear")
     return df
 
-
 # --- SMOOTHING FUNCTION ---
 def moving_average_smoothing(series, window=6):
     """Fungsi untuk melakukan smoothing menggunakan moving average."""
     return pd.Series(series).rolling(window=window, center=True, min_periods=1).mean()
+
+# --- FORMAT FUNCTION ---
+def format_dataframe(df):
+    """Format numeric columns with commas for display."""
+    df_display = df.copy()
+    for col in df_display.select_dtypes(include=['float64', 'int64']).columns:
+        df_display[col] = df_display[col].apply(lambda x: f"{x:,.2f}")
+    return df_display
 
 # --- FORECAST FUNCTIONS ---
 def forecast_production_svr(year, model, scaler, data):
@@ -316,8 +323,12 @@ try:
                             year_prediction = year_prediction.iloc[0]
 
                         if not pd.isnull(year_prediction):
-                            # Highlight the prediction value with the new styling
-                            st.markdown(f"<div class='prediction-value'>{year_prediction:.2f}</div>", unsafe_allow_html=True)
+                            # Format with commas for thousands and add unit
+                            formatted_prediction = f"{year_prediction:,.2f}"
+                            st.markdown(f"""
+                            <div class='prediction-value'>{formatted_prediction}</div>
+                            <div style='text-align: center; margin-top: -5px; font-size: 1rem; color: #666;'>Trilliun BTU</div>
+                            """, unsafe_allow_html=True)
 
                             # Data ringkasan
                             st.markdown("### Ringkasan Data")
@@ -328,7 +339,7 @@ try:
                             with metrics_col1:
                                 st.metric(
                                     "Data Terakhir", 
-                                    f"{last_actual:.2f}", 
+                                    f"{last_actual:,.2f}", 
                                     f"Tahun {df.index[-1]}"
                                 )
                             with metrics_col2:
@@ -388,11 +399,11 @@ try:
                         ay=-40
                     )
 
-                    # Layout
+                    # Layout with updated y-axis title
                     fig.update_layout(
                         title=f"Produksi {energy_type} (Historis dan Prediksi)",
                         xaxis_title="Tahun",
-                        yaxis_title="Produksi",
+                        yaxis_title="Produksi (Trilliun BTU)",  # Added unit
                         template="plotly_white",
                         height=500,
                         hovermode="x unified",
@@ -407,13 +418,13 @@ try:
 
                     st.plotly_chart(fig, use_container_width=True)
 
-                    # Tambahkan tabel ringkasan
+                    # Tambahkan tabel ringkasan dengan format angka dengan koma
                     with st.expander("Tabel Data Prediksi", expanded=False):
                         future_table = future_df.reset_index()
                         future_table.columns = ["Tahun", "Produksi"]
                         # Filter only years from 2025 onward
                         future_table = future_table[future_table["Tahun"] >= 2025]
-                        st.dataframe(future_table, use_container_width=True)
+                        st.dataframe(format_dataframe(future_table), use_container_width=True)
     else:
         # Prediksi untuk model SVR (data bulanan)
         future_df = forecast_production_svr(target_year, model, scaler, df)
@@ -429,8 +440,12 @@ try:
                     december_prediction = december_prediction.iloc[0]
 
                 if not pd.isnull(december_prediction):
-                    # Highlight the prediction value with the new styling
-                    st.markdown(f"<div class='prediction-value'>{december_prediction:.2f}</div>", unsafe_allow_html=True)
+                    # Format with commas for thousands and add unit
+                    formatted_prediction = f"{december_prediction:,.2f}"
+                    st.markdown(f"""
+                    <div class='prediction-value'>{formatted_prediction}</div>
+                    <div style='text-align: center; margin-top: -5px; font-size: 1rem; color: #666;'>Trilliun BTU</div>
+                    """, unsafe_allow_html=True)
 
                     # Data ringkasan
                     st.markdown("### Ringkasan Data")
@@ -448,7 +463,7 @@ try:
                         with metrics_col1:
                             st.metric(
                                 "Data Terakhir", 
-                                f"{last_actual:.2f}", 
+                                f"{last_actual:,.2f}", 
                                 f"{last_date.strftime('%b %Y')}"
                             )
                         with metrics_col2:
@@ -559,11 +574,11 @@ try:
                 ay=-40
             )
 
-            # Layout
+            # Layout with updated y-axis title
             fig.update_layout(
                 title=f"Produksi {energy_type} (Historis dan Prediksi)",
                 xaxis_title="Tahun",
-                yaxis_title="Produksi",
+                yaxis_title="Produksi (Trilliun BTU)",  # Added unit
                 template="plotly_white",
                 height=500,
                 hovermode="x unified",
@@ -578,15 +593,15 @@ try:
 
             st.plotly_chart(fig, use_container_width=True)
 
-            # Tambah tabel ringkasan (opsional, bisa dihide secara default)
+            # Tambah tabel ringkasan dengan format angka dengan koma
             with st.expander("Tabel Data Prediksi", expanded=False):
                 yearly_future = future_df.resample('Y').mean().reset_index()
                 yearly_future["Tahun"] = yearly_future["Tahun"].dt.year
                 yearly_future = yearly_future.rename(columns={"Tahun": "Tahun", "Produksi": "Produksi (rata-rata)"})
                 # Filter only years from 2025 onward
                 yearly_future = yearly_future[yearly_future["Tahun"] >= 2025]
-                st.dataframe(yearly_future, use_container_width=True)
-    
+                st.dataframe(format_dataframe(yearly_future), use_container_width=True)
+
 except FileNotFoundError:
     st.error(f"File model atau data tidak ditemukan untuk energi {energy_type}.")
     st.info("Pastikan semua file model dan data tersedia di folder 'materials'.")
