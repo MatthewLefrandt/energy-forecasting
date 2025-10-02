@@ -3,6 +3,8 @@ import pandas as pd
 import numpy as np
 import joblib
 from datetime import datetime
+import matplotlib.pyplot as plt
+import plotly.express as px
 import plotly.graph_objects as go
 
 # --- SETUP PAGE CONFIG ---
@@ -10,129 +12,41 @@ st.set_page_config(
     page_title="Prediksi Produksi Energi",
     page_icon="⚡",
     layout="wide",
-    initial_sidebar_state="expanded",
-    # Explicitly set light theme
-    menu_items={
-        'Get Help': None,
-        'Report a bug': None,
-        'About': None
-    }
+    initial_sidebar_state="expanded"
 )
 
-# Inject custom CSS right at the beginning
+# --- CUSTOM CSS ---
 st.markdown("""
 <style>
-    /* Override all dark mode elements */
-    .stApp {
-        background-color: white;
-    }
-
-    /* Increase specificity for stronger overrides */
-    body, .stApp, .main, section[data-testid="stSidebar"], div.stButton > button, .stTextInput > div > div > input, .stSelectbox, .stFileUploader, .stDownloadButton > button, .stTabs, .stTab, .stMarkdown, .stTable {
-        background-color: white !important;
-        color: rgb(38, 39, 48) !important;
-    }
-
-    /* Sidebar */
-    [data-testid="stSidebar"] {
-        background-color: #f0f2f6 !important;
-    }
-
-    /* Text elements */
-    p, h1, h2, h3, h4, h5, h6, span, div {
-        color: rgb(38, 39, 48) !important;
-    }
-
-    /* Dataframe */
-    .stDataFrame div[data-testid="stTable"] {
-        color: rgb(38, 39, 48) !important;
-    }
-
-    /* Rest of your custom CSS styles */
     .main-header {
         font-size: 2.5rem;
-        color: #1E88E5 !important;
+        color: #1E88E5;
         margin-bottom: 0.5rem;
     }
     .sub-header {
         font-size: 1.1rem;
-        color: #424242 !important;
+        color: #424242;
         margin-bottom: 2rem;
     }
     .prediction-card {
-        background-color: #f0f7ff !important;
-        border-left: 5px solid #1E88E5;
+        background-color: #f5f7f9;
         padding: 20px;
-        border-radius: 5px;
+        border-radius: 10px;
         box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-        margin-top: 1rem;
-        margin-bottom: 1.5rem;
-    }
-    .prediction-label {
-        font-size: 1rem;
-        color: #616161 !important;
-        margin-bottom: 0.5rem;
     }
     .prediction-value {
-        font-size: 2.5rem;
+        font-size: 3rem;
         font-weight: bold;
-        color: #1E88E5 !important;
-        margin: 0;
-    }
-    .result-title {
-        font-size: 1.5rem;
-        font-weight: bold;
-        color: #212121 !important;
-        margin-bottom: 1rem;
+        color: #1E88E5;
     }
     .footer {
         margin-top: 3rem;
         padding-top: 1rem;
-        color: #9e9e9e !important;
+        color: #9e9e9e;
         font-size: 0.8rem;
         border-top: 1px solid #e0e0e0;
     }
-
-    /* Plotly light mode overrides */
-    .js-plotly-plot .plotly .main-svg,
-    .js-plotly-plot .plotly .bg {
-        fill: white !important;
-    }
-    .js-plotly-plot .plotly .ytick text,
-    .js-plotly-plot .plotly .xtick text,
-    .js-plotly-plot .plotly .gtitle,
-    .js-plotly-plot .plotly .axislayer-above text {
-        fill: #262730 !important;
-    }
-    .js-plotly-plot .plotly .xaxislayer-above path,
-    .js-plotly-plot .plotly .yaxislayer-above path {
-        stroke: #262730 !important;
-    }
 </style>
-""", unsafe_allow_html=True)
-
-# Tambahkan script JavaScript untuk memastikan light mode
-st.markdown("""
-<script>
-    // Fungsi untuk memastikan light mode
-    function forceLightMode() {
-        // Hapus class dark dari body
-        document.body.classList.remove('dark');
-        document.body.classList.add('light');
-
-        // Set warna dan background
-        document.body.style.backgroundColor = 'white';
-        document.body.style.color = '#262730';
-
-        // Coba lagi jika belum berhasil
-        setTimeout(forceLightMode, 100);
-    }
-
-    // Panggil setelah load
-    window.addEventListener('load', forceLightMode);
-    // Coba panggil segera juga
-    forceLightMode();
-</script>
 """, unsafe_allow_html=True)
 
 # --- PATHS ---
@@ -150,23 +64,6 @@ SCALER_PATHS = {
     "Minyak Bumi": "materials/scaler_petroleum.pkl",
     "Biodiesel": "materials/scaler_biodiesel.pkl",
     "Fuel Ethanol": "materials/scaler_fuel_ethanol.pkl"
-}
-
-# --- ENERGY ICONS AND COLORS ---
-ENERGY_ICONS = {
-    "Batu Bara": "🪨",
-    "Gas Alam": "💨",
-    "Minyak Bumi": "🛢️",
-    "Biodiesel": "🌱",
-    "Fuel Ethanol": "🌽"
-}
-
-ENERGY_COLORS = {
-    "Batu Bara": "#37474F",
-    "Gas Alam": "#039BE5",
-    "Minyak Bumi": "#FF6F00",
-    "Biodiesel": "#33691E",
-    "Fuel Ethanol": "#8D6E63"
 }
 
 # --- LOAD DATA ---
@@ -249,6 +146,23 @@ def forecast_production_biodiesel(year, model, scaler, data):
     future_df["Produksi"] = moving_average_smoothing(future_df["Produksi"], window=3)
     return future_df
 
+# --- ENERGY ICONS AND COLORS ---
+ENERGY_ICONS = {
+    "Batu Bara": "🪨",
+    "Gas Alam": "💨",
+    "Minyak Bumi": "🛢️",
+    "Biodiesel": "🌱",
+    "Fuel Ethanol": "🌽"
+}
+
+ENERGY_COLORS = {
+    "Batu Bara": "#37474F",
+    "Gas Alam": "#039BE5",
+    "Minyak Bumi": "#FF6F00",
+    "Biodiesel": "#33691E",
+    "Fuel Ethanol": "#8D6E63"
+}
+
 # --- HEADER ---
 st.markdown('<h1 class="main-header">Prediksi Produksi Energi</h1>', unsafe_allow_html=True)
 st.markdown('<p class="sub-header">Visualisasi dan prediksi produksi energi berdasarkan model machine learning</p>', unsafe_allow_html=True)
@@ -264,7 +178,7 @@ with st.sidebar:
     )
 
     min_year = 2025
-    max_year = 2100
+    max_year = 2100  # Diubah dari 2050 menjadi 2100
     default_year = 2030
 
     target_year = st.slider(
@@ -314,6 +228,41 @@ try:
             if not df.empty:
                 future_df = forecast_production_biodiesel(target_year, model, scaler, df)
 
+                # Tampilkan hasil
+                with col2:
+                    st.markdown(f"### Hasil Prediksi {target_year}")
+
+                    if target_year in future_df.index:
+                        year_prediction = future_df.loc[target_year, "Produksi"]
+                        if isinstance(year_prediction, pd.Series):
+                            year_prediction = year_prediction.iloc[0]
+
+                        if not pd.isnull(year_prediction):
+                            st.markdown('<div class="prediction-card">', unsafe_allow_html=True)
+                            st.markdown(f"<p>Produksi {energy_type} Tahun {target_year}:</p>", unsafe_allow_html=True)
+                            st.markdown(f'<p class="prediction-value">{year_prediction:.2f}</p>', unsafe_allow_html=True)
+                            st.markdown('</div>', unsafe_allow_html=True)
+
+                            # Data ringkasan
+                            st.markdown("### Ringkasan Data")
+                            last_actual = df["Produksi"].iloc[-1]
+                            growth = ((year_prediction - last_actual) / last_actual) * 100
+
+                            metrics_col1, metrics_col2 = st.columns(2)
+                            with metrics_col1:
+                                st.metric(
+                                    "Data Terakhir", 
+                                    f"{last_actual:.2f}", 
+                                    f"Tahun {df.index[-1]}"
+                                )
+                            with metrics_col2:
+                                st.metric(
+                                    "Pertumbuhan", 
+                                    f"{growth:.2f}%", 
+                                    f"Dari {df.index[-1]} ke {target_year}",
+                                    delta_color="normal" if growth >= 0 else "inverse"
+                                )
+
                 # Visualisasi
                 with col1:
                     st.markdown("### Visualisasi Prediksi")
@@ -342,7 +291,7 @@ try:
                             marker=dict(size=6, symbol='diamond')
                         ))
 
-                    # Garis vertikal pemisah (tanpa panah)
+                    # Garis vertikal pemisah (perbaikan untuk issue tanggal)
                     fig.add_vline(
                         x=df.index[-1], 
                         line_width=1, 
@@ -350,32 +299,32 @@ try:
                         line_color="gray"
                     )
 
-                    # Text label for the vertical line
+                    # Tambahkan anotasi terpisah
                     fig.add_annotation(
                         x=df.index[-1],
-                        y=df["Produksi"].max() * 0.95,
+                        y=df["Produksi"].max(),
                         text="Mulai Prediksi",
-                        showarrow=False,
-                        font=dict(size=12, color="gray")
+                        showarrow=True,
+                        arrowhead=1,
+                        ax=40,
+                        ay=-40
                     )
 
-                    # Layout dengan padding atas yang lebih besar
+                    # Layout
                     fig.update_layout(
                         title=f"Produksi {energy_type} (Historis dan Prediksi)",
                         xaxis_title="Tahun",
                         yaxis_title="Produksi",
                         template="plotly_white",
-                        height=550,  # Tambah tinggi untuk memberikan ruang lebih
+                        height=500,
                         hovermode="x unified",
                         legend=dict(
                             orientation="h",
                             yanchor="bottom",
-                            y=1.05,  # Geser legend ke atas
+                            y=1.02,
                             xanchor="right",
                             x=1
-                        ),
-                        margin=dict(t=80, b=50, l=50, r=30),  # Tambahkan margin atas yang lebih besar
-                        autosize=True
+                        )
                     )
 
                     st.plotly_chart(fig, use_container_width=True)
@@ -385,49 +334,53 @@ try:
                         future_table = future_df.reset_index()
                         future_table.columns = ["Tahun", "Produksi"]
                         st.dataframe(future_table, use_container_width=True)
-
-                # Tampilkan hasil
-                with col2:
-                    # Hasil prediksi dalam satu blok utuh
-                    if target_year in future_df.index:
-                        year_prediction = future_df.loc[target_year, "Produksi"]
-                        if isinstance(year_prediction, pd.Series):
-                            year_prediction = year_prediction.iloc[0]
-
-                        if not pd.isnull(year_prediction):
-                            st.markdown('<div class="result-title">Hasil Prediksi</div>', unsafe_allow_html=True)
-
-                            # Gunakan HTML yang lebih sederhana untuk menghindari masalah tokenisasi
-                            prediction_html = f"""
-                            <div class="prediction-card">
-                                <div class="prediction-label">Produksi {energy_type} Tahun {target_year}:</div>
-                                <div class="prediction-value">{year_prediction:.2f}</div>
-                            </div>
-                            """
-                            st.markdown(prediction_html, unsafe_allow_html=True)
-
-                            # Data ringkasan
-                            st.markdown('<div class="result-title">Ringkasan Data</div>', unsafe_allow_html=True)
-                            last_actual = df["Produksi"].iloc[-1]
-                            growth = ((year_prediction - last_actual) / last_actual) * 100
-
-                            metrics_col1, metrics_col2 = st.columns(2)
-                            with metrics_col1:
-                                st.metric(
-                                    "Data Terakhir", 
-                                    f"{last_actual:.2f}", 
-                                    f"Tahun {df.index[-1]}"
-                                )
-                            with metrics_col2:
-                                st.metric(
-                                    "Pertumbuhan", 
-                                    f"{growth:.2f}%", 
-                                    f"Dari {df.index[-1]} ke {target_year}",
-                                    delta_color="normal" if growth >= 0 else "inverse"
-                                )
     else:
         # Prediksi untuk model SVR (data bulanan)
         future_df = forecast_production_svr(target_year, model, scaler, df)
+
+        # Tampilkan hasil
+        with col2:
+            st.markdown(f"### Hasil Prediksi {target_year}")
+
+            try:
+                december_prediction = future_df.loc[f"{target_year}-12", "Produksi"]
+                if isinstance(december_prediction, pd.Series):
+                    december_prediction = december_prediction.iloc[0]
+
+                if not pd.isnull(december_prediction):
+                    st.markdown('<div class="prediction-card">', unsafe_allow_html=True)
+                    st.markdown(f"<p>Produksi {energy_type} Desember {target_year}:</p>", unsafe_allow_html=True)
+                    st.markdown(f'<p class="prediction-value">{december_prediction:.2f}</p>', unsafe_allow_html=True)
+                    st.markdown('</div>', unsafe_allow_html=True)
+
+                    # Data ringkasan
+                    st.markdown("### Ringkasan Data")
+
+                    # Ambil data terakhir (Desember dari tahun terakhir data)
+                    last_year_data = df[df.index.year == df.index.year.max()]
+                    if not last_year_data.empty:
+                        last_actual = last_year_data["Produksi"].iloc[-1]
+                        last_date = last_year_data.index[-1]
+
+                        # Hitung pertumbuhan
+                        growth = ((december_prediction - last_actual) / last_actual) * 100
+
+                        metrics_col1, metrics_col2 = st.columns(2)
+                        with metrics_col1:
+                            st.metric(
+                                "Data Terakhir", 
+                                f"{last_actual:.2f}", 
+                                f"{last_date.strftime('%b %Y')}"
+                            )
+                        with metrics_col2:
+                            st.metric(
+                                "Pertumbuhan", 
+                                f"{growth:.2f}%", 
+                                f"Dari {last_date.strftime('%b %Y')} ke Des {target_year}",
+                                delta_color="normal" if growth >= 0 else "inverse"
+                            )
+            except (KeyError, Exception) as e:
+                st.warning(f"Tidak ada hasil prediksi untuk Desember {target_year}.")
 
         # Visualisasi
         with col1:
@@ -514,90 +467,42 @@ try:
                 line_color="gray"
             )
 
-            # Text label sebagai pengganti panah
+            # Tambahkan anotasi terpisah
             fig.add_annotation(
                 x=pd.to_datetime(first_pred_date),
-                y=yearly_df["Produksi"].mean() * 1.2,
+                y=df["Produksi"].mean() * 1.2,  # Posisikan di atas rata-rata
                 text="Mulai Prediksi",
-                showarrow=False,
-                font=dict(size=12, color="gray")
+                showarrow=True,
+                arrowhead=1,
+                ax=40,
+                ay=-40
             )
 
-            # Layout dengan padding atas yang lebih besar
+            # Layout
             fig.update_layout(
                 title=f"Produksi {energy_type} (Historis dan Prediksi)",
                 xaxis_title="Tahun",
                 yaxis_title="Produksi",
                 template="plotly_white",
-                height=550,  # Tambah tinggi untuk memberikan ruang lebih
+                height=500,
                 hovermode="x unified",
                 legend=dict(
                     orientation="h",
                     yanchor="bottom",
-                    y=1.05,  # Geser legend ke atas
+                    y=1.02,
                     xanchor="right",
                     x=1
-                ),
-                margin=dict(t=80, b=50, l=50, r=30),  # Tambahkan margin atas yang lebih besar
-                autosize=True
+                )
             )
 
             st.plotly_chart(fig, use_container_width=True)
 
-            # Tambah tabel ringkasan
+            # Tambah tabel ringkasan (opsional, bisa dihide secara default)
             with st.expander("Tabel Data Prediksi", expanded=False):
                 yearly_future = future_df.resample('Y').mean().reset_index()
                 yearly_future["Tahun"] = yearly_future["Tahun"].dt.year
                 yearly_future = yearly_future.rename(columns={"Tahun": "Tahun", "Produksi": "Produksi (rata-rata)"})
                 st.dataframe(yearly_future, use_container_width=True)
-
-        # Tampilkan hasil
-        with col2:
-            try:
-                december_prediction = future_df.loc[f"{target_year}-12", "Produksi"]
-                if isinstance(december_prediction, pd.Series):
-                    december_prediction = december_prediction.iloc[0]
-
-                if not pd.isnull(december_prediction):
-                    st.markdown('<div class="result-title">Hasil Prediksi</div>', unsafe_allow_html=True)
-
-                    # Gunakan HTML yang lebih sederhana
-                    prediction_html = f"""
-                    <div class="prediction-card">
-                        <div class="prediction-label">Produksi {energy_type} Desember {target_year}:</div>
-                        <div class="prediction-value">{december_prediction:.2f}</div>
-                    </div>
-                    """
-                    st.markdown(prediction_html, unsafe_allow_html=True)
-
-                    # Data ringkasan
-                    st.markdown('<div class="result-title">Ringkasan Data</div>', unsafe_allow_html=True)
-
-                    # Ambil data terakhir (Desember dari tahun terakhir data)
-                    last_year_data = df[df.index.year == df.index.year.max()]
-                    if not last_year_data.empty:
-                        last_actual = last_year_data["Produksi"].iloc[-1]
-                        last_date = last_year_data.index[-1]
-
-                        # Hitung pertumbuhan
-                        growth = ((december_prediction - last_actual) / last_actual) * 100
-
-                        metrics_col1, metrics_col2 = st.columns(2)
-                        with metrics_col1:
-                            st.metric(
-                                "Data Terakhir", 
-                                f"{last_actual:.2f}", 
-                                f"{last_date.strftime('%b %Y')}"
-                            )
-                        with metrics_col2:
-                            st.metric(
-                                "Pertumbuhan", 
-                                f"{growth:.2f}%", 
-                                f"Dari {last_date.strftime('%b %Y')}",
-                                delta_color="normal" if growth >= 0 else "inverse"
-                            )
-            except (KeyError, Exception) as e:
-                st.warning(f"Tidak ada hasil prediksi untuk Desember {target_year}.")
 
 except FileNotFoundError:
     st.error(f"File model atau data tidak ditemukan untuk energi {energy_type}.")
