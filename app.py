@@ -1,10 +1,10 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import joblib  # Ganti dari pickle ke joblib
+import joblib
 from sklearn.preprocessing import StandardScaler
 from datetime import datetime
-import matplotlib.pyplot as plt  # Pastikan ini diimpor
+import matplotlib.pyplot as plt
 
 # --- PATHS ---
 DATA_PATH = "materials/Combined_modelling.xlsx"
@@ -12,29 +12,32 @@ MODEL_PATHS = {
     "Batu Bara": "materials/svr_coal_model.pkl",
     "Gas Alam": "materials/svr_natural_gas_model.pkl",
     "Minyak Bumi": "materials/svr_petroleum_model.pkl",
-    "Biodiesel": "materials/linreg_biodiesel_model.pkl"  # Tambahkan model Biodiesel
+    "Biodiesel": "materials/linreg_biodiesel_model.pkl"
 }
 SCALER_PATHS = {
     "Batu Bara": "materials/scaler_coal.pkl",
     "Gas Alam": "materials/scaler_natural_gas.pkl",
     "Minyak Bumi": "materials/scaler_petroleum.pkl",
-    "Biodiesel": "materials/scaler_biodiesel.pkl"  # Tambahkan scaler Biodiesel
+    "Biodiesel": "materials/scaler_biodiesel.pkl"
 }
 
 # --- LOAD DATA ---
-@st.cache_data  # Gunakan cache_data yang lebih baru daripada st.cache
+@st.cache_data
 def load_data(energy_type):
     """Load dan filter data berdasarkan jenis energi."""
     df = pd.read_excel(DATA_PATH)
     df = df[df["Jenis_Energi"] == energy_type].drop(columns=["Tipe_Aliran"])
     df = df.T.reset_index()
     df.columns = ['Tahun', 'Produksi']
-    df = df[1:]
+    df = df[1:]  # Hapus baris header
 
-    # Jika Biodiesel, gunakan data tahunan
+    # Jika Biodiesel, gunakan data tahunan dan tangani missing values
     if energy_type == "Biodiesel":
         df["Tahun"] = df["Tahun"].astype(int)
         df["Produksi"] = df["Produksi"].astype(float)
+        # Hapus data dengan nilai NaN atau 0
+        df = df.dropna()
+        df = df[df["Produksi"] > 0]
         df = df.set_index("Tahun")
         return df
     else:
@@ -141,54 +144,74 @@ try:
     # Load data
     df = load_data(energy_type)
 
-   # --- RUN FORECAST ---
+    # Informasi tentang data yang digunakan
     if energy_type == "Biodiesel":
-        future_df = forecast_production_biodiesel(target_year, model, scaler, df)
+        st.info(f"Data Biodiesel tersedia dari tahun {df.index.min()} hingga {df.index.max()}. Data sebelum tahun 2000 tidak tersedia.")
 
-        # --- DISPLAY RESULTS ---
-        try:
-            # Ambil hasil prediksi untuk tahun target
-            year_prediction = future_df.loc[target_year, "Produksi"]
+    # --- RUN FORECAST ---
+    if energy_type == "Biodiesel":
+        # Tambahkan validasi: pastikan df tidak kosong
+        if df.empty:
+            st.error("Data Biodiesel tidak cukup untuk melakukan prediksi. Tidak ada data yang tersedia.")
+        else:
+            # Tambahkan Lag_1 ke data untuk Biodiesel (diperlukan untuk model)
+            df["Lag_1"] = df["Produksi"].shift(1)
+            df = df.dropna()  # Hapus baris dengan NaN setelah shifting
 
-            # Pastikan hasil prediksi adalah scalar
-            if isinstance(year_prediction, pd.Series):
-                year_prediction = year_prediction.iloc[0]
+            # Jalankan prediksi jika data tidak kosong
+            if not df.empty:
+                future_df = forecast_production_biodiesel(target_year, model, scaler, df)
 
-            if not pd.isnull(year_prediction):
-                st.subheader("Hasil Prediksi")
-                st.write(f"Prediksi Produksi Energi {energy_type} untuk Tahun {target_year}:")
-                st.write(f"{year_prediction:.2f}")
+                # --- DISPLAY RESULTS ---
+                try:
+                    # Ambil hasil prediksi untuk tahun target
+                    if target_year in future_df.index:
+                        year_prediction = future_df.loc[target_year, "Produksi"]
+
+                        # Pastikan hasil prediksi adalah scalar
+                        if isinstance(year_prediction, pd.Series):
+                            year_prediction = year_prediction.iloc[0]
+
+                        if not pd.isnull(year_prediction):
+                            st.subheader("Hasil Prediksi")
+                            st.write(f"Prediksi Produksi Energi {energy_type} untuk Tahun {target_year}:")
+                            st.write(f"{year_prediction:.2f}")
+                        else:
+                            st.subheader("Hasil Prediksi")
+                            st.write(f"Tidak ada data prediksi untuk Tahun {target_year}.")
+                    else:
+                        st.subheader("Hasil Prediksi")
+                        st.write(f"Tidak ada data prediksi untuk Tahun {target_year}.")
+
+                    # --- PLOT RESULTS ---
+                    st.subheader("Visualisasi Prediksi")
+                    plt.figure(figsize=(12, 6))
+
+                    # Plot data historis
+                    plt.plot(df.index, df["Produksi"], label="Data Aktual", color="blue", marker='o')
+
+                    # Persiapkan data untuk prediksi jika ada
+                    if not future_df.empty:
+                        # Plot prediksi
+                        plt.plot(future_df.index, future_df["Produksi"], label="Prediksi (Smoothed)", 
+                                color="red", linestyle="--", marker='x')
+
+                    plt.axvline(x=df.index.max(), color="black", linestyle=":", label="Awal Prediksi")
+                    plt.title(f"Prediksi Produksi Energi {energy_type}")
+                    plt.xlabel("Tahun")
+                    plt.ylabel("Produksi")
+                    plt.grid(True)
+                    plt.legend()
+                    st.pyplot(plt)
+
+                except KeyError as e:
+                    st.subheader("Hasil Prediksi")
+                    st.write(f"Tidak ada data prediksi untuk Tahun {target_year}. Detail: {e}")
+                except Exception as e:
+                    st.subheader("Hasil Prediksi")
+                    st.write(f"Terjadi error: {e}")
             else:
-                st.subheader("Hasil Prediksi")
-                st.write(f"Tidak ada data prediksi untuk Tahun {target_year}.")
-
-            # --- PLOT RESULTS ---
-            st.subheader("Visualisasi Prediksi")
-            plt.figure(figsize=(12, 6))
-
-            # Plot data historis
-            plt.plot(df.index, df["Produksi"], label="Data Aktual", color="blue", marker='o')
-
-            # Persiapkan data untuk prediksi jika ada
-            if not future_df.empty:
-                # Plot prediksi
-                plt.plot(future_df.index, future_df["Produksi"], label="Prediksi (Smoothed)", 
-                         color="red", linestyle="--", marker='x')
-
-            plt.axvline(x=df.index.max(), color="black", linestyle=":", label="Awal Prediksi")
-            plt.title(f"Prediksi Produksi Energi {energy_type}")
-            plt.xlabel("Tahun")
-            plt.ylabel("Produksi")
-            plt.grid(True)
-            plt.legend()
-            st.pyplot(plt)
-
-        except KeyError:
-            st.subheader("Hasil Prediksi")
-            st.write(f"Tidak ada data prediksi untuk Tahun {target_year}.")
-        except Exception as e:
-            st.subheader("Hasil Prediksi")
-            st.write(f"Terjadi error: {e}")
+                st.error("Data Biodiesel tidak cukup untuk membuat prediksi setelah menerapkan lag.")
     else:
         # Untuk model SVR (data bulanan)
         future_df = forecast_production_svr(target_year, model, scaler, df)
@@ -229,5 +252,5 @@ try:
         plt.legend()
         st.pyplot(plt)
 except Exception as e:
-    st.subheader("Error")
-    st.write(f"Terjadi error saat memuat model atau data: {e}")
+    st.error(f"Terjadi error saat memuat model atau data: {e}")
+    st.info("Jika Anda memilih 'Biodiesel', pastikan file model dan data tersedia dan memiliki data yang cukup.")
