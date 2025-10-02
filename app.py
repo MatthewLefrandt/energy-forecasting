@@ -2,8 +2,9 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import joblib
+from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import StandardScaler
-from datetime import datetime
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import matplotlib.pyplot as plt
 
 # --- PATHS ---
@@ -30,9 +31,11 @@ def load_data(energy_type):
     df = df.T.reset_index()
     df.columns = ['Tahun', 'Produksi']
     df = df[1:]
-    df["Tahun"] = pd.to_datetime(df["Tahun"].astype(int), format='%Y')
-    df["Produksi"] = df["Produksi"].astype(float)
+    df["Tahun"] = df["Tahun"].astype(int)
+    df["Produksi"] = pd.to_numeric(df["Produksi"], errors='coerce')  # Pastikan semua nilai numerik
     df = df.set_index("Tahun")
+    df = df.interpolate(method="linear")  # Mengisi nilai kosong dengan interpolasi linear
+    df = df.dropna()  # Pastikan tidak ada nilai kosong setelah interpolasi
     return df
 
 # --- SMOOTHING FUNCTION ---
