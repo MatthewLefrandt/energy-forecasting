@@ -6,6 +6,7 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 import plotly.express as px
 import plotly.graph_objects as go
+import time
 
 # --- SETUP PAGE CONFIG ---
 st.set_page_config(
@@ -16,27 +17,102 @@ st.set_page_config(
 )
 
 # --- WELCOME POPUP ---
-# Use session state to control popup visibility
-if 'show_welcome' not in st.session_state:
-    st.session_state.show_welcome = True
+# We'll use a cookie to track if the user has seen the popup
+popup_html = """
+<style>
+.popup-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
 
-if st.session_state.show_welcome:
-    welcome_container = st.container()
-    with welcome_container:
-        col1, col2, col3 = st.columns([1, 3, 1])
-        with col2:
-            st.markdown("### 👋 Selamat Datang di Aplikasi Prediksi Produksi Energi!")
-            st.markdown("""
+.popup-content {
+    background: white;
+    width: 500px;
+    max-width: 90%;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 5px 30px rgba(0, 0, 0, 0.3);
+    text-align: center;
+}
+
+.popup-title {
+    font-size: 24px;
+    font-weight: bold;
+    color: #1E88E5;
+    margin-bottom: 15px;
+}
+
+.popup-message {
+    font-size: 16px;
+    line-height: 1.6;
+    margin-bottom: 25px;
+    color: #424242;
+}
+
+.popup-button {
+    background: #1E88E5;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.popup-button:hover {
+    background: #1565C0;
+}
+
+.popup-emoji {
+    font-size: 40px;
+    margin-bottom: 15px;
+}
+</style>
+
+<div class="popup-overlay" id="welcomePopup">
+    <div class="popup-content">
+        <div class="popup-emoji">👋</div>
+        <div class="popup-title">Selamat Datang di Aplikasi Prediksi Produksi Energi!</div>
+        <div class="popup-message">
             Untuk pengalaman terbaik, kami menyarankan Anda:
-
-            1. Gunakan **Light Mode** pada browser Anda
-            2. Atur **Zoom Browser** ke **75%** untuk tampilan optimal
-
+            <br><br>
+            <b>1.</b> Gunakan <b>Light Mode</b> pada browser Anda
+            <br>
+            <b>2.</b> Atur <b>Zoom Browser</b> ke <b>75%</b> untuk tampilan optimal
+            <br><br>
             Penyesuaian ini akan mencegah elemen tampilan saling tumpang tindih dan memastikan visualisasi data terlihat dengan sempurna.
-            """)
-            if st.button("Mengerti, Lanjutkan"):
-                st.session_state.show_welcome = False
-                st.experimental_rerun()
+        </div>
+        <button class="popup-button" onclick="closePopup()">Mengerti, Lanjutkan</button>
+    </div>
+</div>
+
+<script>
+// Function to close popup and set cookie
+function closePopup() {
+    document.getElementById('welcomePopup').style.display = 'none';
+    localStorage.setItem('popupShown', 'true');
+}
+
+// Check if popup has been shown before
+document.addEventListener('DOMContentLoaded', function() {
+    if (localStorage.getItem('popupShown')) {
+        document.getElementById('welcomePopup').style.display = 'none';
+    }
+});
+</script>
+"""
+
+# Inject the popup HTML
+st.markdown(popup_html, unsafe_allow_html=True)
 
 # --- CUSTOM CSS ---
 st.markdown("""
@@ -111,6 +187,7 @@ def load_data(energy_type):
         df = df.set_index("Tahun")
         df = df.resample("MS").interpolate(method="linear")
     return df
+    
     
 # --- SMOOTHING FUNCTION ---
 def moving_average_smoothing(series, window=6):
