@@ -11,12 +11,14 @@ DATA_PATH = "materials/Combined_modelling.xlsx"
 MODEL_PATHS = {
     "Batu Bara": "materials/svr_coal_model.pkl",
     "Gas Alam": "materials/svr_natural_gas_model.pkl",
-    "Minyak Bumi": "materials/svr_petroleum_model.pkl"
+    "Minyak Bumi": "materials/svr_petroleum_model.pkl",
+    "Biodiesel": "materials/linreg_biodiesel_model.pkl"
 }
 SCALER_PATHS = {
     "Batu Bara": "materials/scaler_coal.pkl",
     "Gas Alam": "materials/scaler_natural_gas.pkl",
-    "Minyak Bumi": "materials/scaler_petroleum.pkl"
+    "Minyak Bumi": "materials/scaler_petroleum.pkl",
+    "Biodiesel": "materials/scaler_biodiesel.pkl"
 }
 
 # --- LOAD DATA ---
@@ -35,50 +37,71 @@ def load_data(energy_type):
     return df
 
 # --- SMOOTHING FUNCTION ---
-def moving_average_smoothing(series, window=6):
+def moving_average_smoothing(series, window=3):
     """Fungsi untuk melakukan smoothing menggunakan moving average."""
     return pd.Series(series).rolling(window=window, center=True, min_periods=1).mean()
 
 # --- FORECAST FUNCTION ---
-def forecast_production(year, model, scaler, data):
+def forecast_production(year, model, scaler, data, energy_type):
     """Melakukan prediksi hingga bulan Desember tahun target."""
-    # Hitung jumlah bulan dari data terakhir hingga target tahun
-    last_date = data.index[-1]
-    target_date = pd.to_datetime(f"{year}-12-01")
-    future_months = pd.date_range(start=last_date + pd.offsets.MonthBegin(1), end=target_date, freq="MS")
+    if energy_type == "Biodiesel":
+        # Prediksi tahunan untuk Biodiesel
+        last_year = data.index.max().year
+        future_years = list(range(last_year + 1, year + 1))
+        recent_value = data["Produksi"].values[-1]
+        future_preds = []
 
-    # Ambil 12 nilai terakhir sebagai input awal
-    recent_values = data["Produksi"].values[-12:].tolist()
-    future_preds = []
+        for _ in future_years:
+            lag_input = np.array([[recent_value]])
+            lag_scaled = scaler.transform(lag_input)
+            pred = model.predict(lag_scaled)[0]
+            future_preds.append(pred)
+            recent_value = pred  # update untuk tahun berikutnya
 
-    for _ in range(len(future_months)):
-        # Buat input lag 12 bulan
-        lag_input = np.array(recent_values[-12:]).reshape(1, -1)
-        lag_scaled = scaler.transform(lag_input)
-        # Prediksi menggunakan model
-        pred = model.predict(lag_scaled)[0]
-        future_preds.append(pred)
-        recent_values.append(pred)
+        # Gabungkan prediksi dengan index waktu
+        future_df = pd.DataFrame({
+            "Tahun": future_years,
+            "Produksi": future_preds
+        }).set_index("Tahun")
 
-    # Gabungkan prediksi dengan index waktu
-    future_df = pd.DataFrame({
-        "Tahun": future_months,
-        "Produksi": future_preds
-    }).set_index("Tahun")
+        # Terapkan smoothing pada hasil prediksi
+        future_df["Produksi"] = moving_average_smoothing(future_df["Produksi"])
+        return future_df
+    else:
+        # Prediksi bulanan untuk Batu Bara, Gas Alam, dan Minyak Bumi
+        last_date = data.index[-1]
+        target_date = pd.to_datetime(f"{year}-12-01")
+        future_months = pd.date_range(start=last_date + pd.offsets.MonthBegin(1), end=target_date, freq="MS")
 
-    # Terapkan smoothing pada hasil prediksi
-    future_df["Produksi"] = moving_average_smoothing(future_df["Produksi"])
+        # Ambil 12 nilai terakhir sebagai input awal
+        recent_values = data["Produksi"].values[-12:].tolist()
+        future_preds = []
 
-    return future_df
+        for _ in range(len(future_months)):
+            lag_input = np.array(recent_values[-12:]).reshape(1, -1)
+            lag_scaled = scaler.transform(lag_input)
+            pred = model.predict(lag_scaled)[0]
+            future_preds.append(pred)
+            recent_values.append(pred)
+
+        # Gabungkan prediksi dengan index waktu
+        future_df = pd.DataFrame({
+            "Tahun": future_months,
+            "Produksi": future_preds
+        }).set_index("Tahun")
+
+        # Terapkan smoothing pada hasil prediksi
+        future_df["Produksi"] = moving_average_smoothing(future_df["Produksi"])
+        return future_df
 
 # --- STREAMLIT APP ---
 st.title("Prediksi Produksi Energi")
-st.write("Aplikasi ini memprediksi produksi energi berdasarkan model SVR yang telah dilatih.")
+st.write("Aplikasi ini memprediksi produksi energi berdasarkan model yang telah dilatih.")
 
 # --- USER INPUT ---
 st.sidebar.header("Input Prediksi")
-energy_type = st.sidebar.selectbox("Pilih Jenis Energi", options=["Batu Bara", "Gas Alam", "Minyak Bumi"])
-target_year = st.sidebar.number_input("Masukkan Tahun Prediksi", min_value=2025, max_value=2100, value=2030, step=1)
+energy_type = st.sidebar.selectbox("Pilih Jenis Energi", options=["Batu Bara", "Gas Alam", "Minyak Bumi", "Biodiesel"])
+target_year = st.sidebar.number_input("Masukkan Tahun Prediksi", min_value=2025, max_value=2100, value=2025, step=1)
 
 # --- LOAD MODEL & SCALER ---
 try:
@@ -86,19 +109,23 @@ try:
     scaler_path = SCALER_PATHS[energy_type]
 
     # Load model dan scaler
-    svr_model = joblib.load(model_path)
+    model = joblib.load(model_path)
     scaler = joblib.load(scaler_path)
 
     # Load data
     df = load_data(energy_type)
 
     # --- RUN FORECAST ---
-    future_df = forecast_production(target_year, svr_model, scaler, df)
+    future_df = forecast_production(target_year, model, scaler, df, energy_type)
 
     # --- DISPLAY RESULTS ---
     try:
-        # Ambil hasil prediksi untuk bulan Desember di tahun target
-        december_prediction = future_df.loc[f"{target_year}-12", "Produksi"]
+        if energy_type == "Biodiesel":
+            # Ambil hasil prediksi untuk tahun target
+            december_prediction = future_df.loc[target_year, "Produksi"]
+        else:
+            # Ambil hasil prediksi untuk bulan Desember di tahun target
+            december_prediction = future_df.loc[f"{target_year}-12", "Produksi"]
 
         # Pastikan hasil prediksi adalah scalar
         if isinstance(december_prediction, pd.Series):
@@ -106,14 +133,14 @@ try:
 
         if not pd.isnull(december_prediction):
             st.subheader("Hasil Prediksi")
-            st.write(f"Prediksi Produksi Energi {energy_type} untuk Bulan Desember Tahun {target_year}:")
+            st.write(f"Prediksi Produksi Energi {energy_type} untuk Tahun {target_year}:")
             st.write(f"{december_prediction:.2f}")
         else:
             st.subheader("Hasil Prediksi")
-            st.write(f"Tidak ada data prediksi untuk Bulan Desember Tahun {target_year}.")
+            st.write(f"Tidak ada data prediksi untuk Tahun {target_year}.")
     except KeyError:
         st.subheader("Hasil Prediksi")
-        st.write(f"Tidak ada data prediksi untuk Bulan Desember Tahun {target_year}.")
+        st.write(f"Tidak ada data prediksi untuk Tahun {target_year}.")
     except Exception as e:
         st.subheader("Hasil Prediksi")
         st.write(f"Terjadi error: {e}")
