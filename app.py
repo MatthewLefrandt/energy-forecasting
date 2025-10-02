@@ -15,6 +15,94 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Add this code right after your st.set_page_config
+
+# --- POPUP FOR FIRST-TIME USERS ---
+st.markdown("""
+<style>
+.welcome-popup {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+.welcome-content {
+    background-color: white;
+    padding: 30px;
+    border-radius: 10px;
+    max-width: 500px;
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+.welcome-title {
+    font-size: 22px;
+    color: #1E88E5;
+    margin-bottom: 15px;
+    font-weight: bold;
+}
+.welcome-text {
+    font-size: 16px;
+    color: #424242;
+    line-height: 1.5;
+    margin-bottom: 20px;
+}
+.welcome-button {
+    background-color: #1E88E5;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s;
+}
+.welcome-button:hover {
+    background-color: #1565C0;
+}
+.welcome-emoji {
+    font-size: 40px;
+    margin-bottom: 15px;
+}
+</style>
+
+<div class="welcome-popup" id="welcomePopup">
+    <div class="welcome-content">
+        <div class="welcome-emoji">👋</div>
+        <div class="welcome-title">Selamat Datang di Aplikasi Prediksi Produksi Energi!</div>
+        <p class="welcome-text">
+            Untuk pengalaman terbaik, kami menyarankan Anda:
+            <br><br>
+            <b>1.</b> Gunakan <b>Light Mode</b> pada browser Anda
+            <br>
+            <b>2.</b> Atur <b>Zoom Browser</b> ke <b>75%</b> untuk tampilan optimal
+            <br><br>
+            Penyesuaian ini akan mencegah elemen tampilan saling tumpang tindih dan memastikan visualisasi data terlihat dengan sempurna.
+        </p>
+        <button class="welcome-button" onclick="closeWelcomePopup()">Mengerti, Lanjutkan</button>
+    </div>
+</div>
+
+<script>
+function closeWelcomePopup() {
+    document.getElementById('welcomePopup').style.display = 'none';
+    localStorage.setItem('welcomeShown', 'true');
+}
+
+// Check if popup has been shown before
+document.addEventListener('DOMContentLoaded', function() {
+    if (localStorage.getItem('welcomeShown')) {
+        document.getElementById('welcomePopup').style.display = 'none';
+    }
+});
+</script>
+""", unsafe_allow_html=True)
+
 # --- CUSTOM CSS ---
 st.markdown("""
 <style>
