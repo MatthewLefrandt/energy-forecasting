@@ -11,156 +11,129 @@ st.set_page_config(
     page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded",
+    # Explicitly set light theme
+    menu_items={
+        'Get Help': None,
+        'Report a bug': None,
+        'About': None
+    }
 )
 
-# --- FORCE LIGHT MODE ---
-# Teknik untuk memaksa light mode dengan memodifikasi class dan warna secara komprehensif
-force_light_mode = """
-<script>
-    // Fungsi untuk memaksa light mode
-    function forceLightMode() {
-        // Tunggu DOM content loaded
-        document.addEventListener("DOMContentLoaded", function() {
-            // Hapus class dark dari body
-            document.body.classList.remove('dark');
-            document.body.classList.add('light');
-
-            // Set background dan warna text
-            document.body.style.backgroundColor = '#FFFFFF';
-            document.body.style.color = '#262730';
-
-            // Apply style changes
-            const style = document.createElement('style');
-            style.innerHTML = `
-                .stApp {
-                    background-color: #FFFFFF !important;
-                    color: #262730 !important;
-                }
-                .st-emotion-cache-czk5ss {
-                    background-color: #FFFFFF !important;
-                }
-                .st-emotion-cache-16txtl3 {
-                    background-color: #F0F2F6 !important;
-                    color: #262730 !important;
-                }
-                .st-emotion-cache-10trblm {
-                    color: #262730 !important;
-                }
-                .st-emotion-cache-1gulkj5 {
-                    color: #262730 !important;
-                }
-                /* Sidebar */
-                .st-emotion-cache-1cypcdb {
-                    background-color: #F0F2F6 !important;
-                }
-                /* Semua text */
-                p, h1, h2, h3, h4, h5, h6, span, div {
-                    color: #262730 !important;
-                }
-                /* Input fields */
-                .st-emotion-cache-75wb8s {
-                    background-color: #FFFFFF !important;
-                    color: #262730 !important;
-                }
-                /* Buttons */
-                .st-emotion-cache-jgf8ql {
-                    background-color: #FFFFFF !important;
-                    color: #262730 !important;
-                }
-            `;
-            document.head.appendChild(style);
-        });
-
-        // Ulangi setiap 500ms untuk mengatasi perubahan dinamis
-        setTimeout(forceLightMode, 500);
+# Inject custom CSS right at the beginning
+st.markdown("""
+<style>
+    /* Override all dark mode elements */
+    .stApp {
+        background-color: white;
     }
 
-    // Jalankan fungsi
+    /* Increase specificity for stronger overrides */
+    body, .stApp, .main, section[data-testid="stSidebar"], div.stButton > button, .stTextInput > div > div > input, .stSelectbox, .stFileUploader, .stDownloadButton > button, .stTabs, .stTab, .stMarkdown, .stTable {
+        background-color: white !important;
+        color: rgb(38, 39, 48) !important;
+    }
+
+    /* Sidebar */
+    [data-testid="stSidebar"] {
+        background-color: #f0f2f6 !important;
+    }
+
+    /* Text elements */
+    p, h1, h2, h3, h4, h5, h6, span, div {
+        color: rgb(38, 39, 48) !important;
+    }
+
+    /* Dataframe */
+    .stDataFrame div[data-testid="stTable"] {
+        color: rgb(38, 39, 48) !important;
+    }
+
+    /* Rest of your custom CSS styles */
+    .main-header {
+        font-size: 2.5rem;
+        color: #1E88E5 !important;
+        margin-bottom: 0.5rem;
+    }
+    .sub-header {
+        font-size: 1.1rem;
+        color: #424242 !important;
+        margin-bottom: 2rem;
+    }
+    .prediction-card {
+        background-color: #f0f7ff !important;
+        border-left: 5px solid #1E88E5;
+        padding: 20px;
+        border-radius: 5px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+        margin-top: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    .prediction-label {
+        font-size: 1rem;
+        color: #616161 !important;
+        margin-bottom: 0.5rem;
+    }
+    .prediction-value {
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: #1E88E5 !important;
+        margin: 0;
+    }
+    .result-title {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #212121 !important;
+        margin-bottom: 1rem;
+    }
+    .footer {
+        margin-top: 3rem;
+        padding-top: 1rem;
+        color: #9e9e9e !important;
+        font-size: 0.8rem;
+        border-top: 1px solid #e0e0e0;
+    }
+
+    /* Plotly light mode overrides */
+    .js-plotly-plot .plotly .main-svg,
+    .js-plotly-plot .plotly .bg {
+        fill: white !important;
+    }
+    .js-plotly-plot .plotly .ytick text,
+    .js-plotly-plot .plotly .xtick text,
+    .js-plotly-plot .plotly .gtitle,
+    .js-plotly-plot .plotly .axislayer-above text {
+        fill: #262730 !important;
+    }
+    .js-plotly-plot .plotly .xaxislayer-above path,
+    .js-plotly-plot .plotly .yaxislayer-above path {
+        stroke: #262730 !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# Tambahkan script JavaScript untuk memastikan light mode
+st.markdown("""
+<script>
+    // Fungsi untuk memastikan light mode
+    function forceLightMode() {
+        // Hapus class dark dari body
+        document.body.classList.remove('dark');
+        document.body.classList.add('light');
+
+        // Set warna dan background
+        document.body.style.backgroundColor = 'white';
+        document.body.style.color = '#262730';
+
+        // Coba lagi jika belum berhasil
+        setTimeout(forceLightMode, 100);
+    }
+
+    // Panggil setelah load
+    window.addEventListener('load', forceLightMode);
+    // Coba panggil segera juga
     forceLightMode();
 </script>
-"""
-
-# --- CUSTOM CSS ---
-css = """
-<style>
-body {
-    background-color: #FFFFFF !important;
-    color: #262730 !important;
-}
-.stApp {
-    background-color: #FFFFFF !important;
-    color: #262730 !important;
-}
-.main-header {
-    font-size: 2.5rem;
-    color: #1E88E5 !important;
-    margin-bottom: 0.5rem;
-}
-.sub-header {
-    font-size: 1.1rem;
-    color: #424242 !important;
-    margin-bottom: 2rem;
-}
-.prediction-card {
-    background-color: #f0f7ff !important;
-    border-left: 5px solid #1E88E5;
-    padding: 20px;
-    border-radius: 5px;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-    margin-top: 1rem;
-    margin-bottom: 1.5rem;
-}
-.prediction-label {
-    font-size: 1rem;
-    color: #616161 !important;
-    margin-bottom: 0.5rem;
-}
-.prediction-value {
-    font-size: 2.5rem;
-    font-weight: bold;
-    color: #1E88E5 !important;
-    margin: 0;
-}
-.result-title {
-    font-size: 1.5rem;
-    font-weight: bold;
-    color: #212121 !important;
-    margin-bottom: 1rem;
-}
-.footer {
-    margin-top: 3rem;
-    padding-top: 1rem;
-    color: #9e9e9e !important;
-    font-size: 0.8rem;
-    border-top: 1px solid #e0e0e0;
-}
-/* Override plotly dark theme */
-.js-plotly-plot .plotly .main-svg {
-    background: white !important;
-}
-.js-plotly-plot .plotly .bg {
-    fill: white !important;
-}
-.js-plotly-plot .plotly .ytick text,
-.js-plotly-plot .plotly .xtick text,
-.js-plotly-plot .plotly .gtitle,
-.js-plotly-plot .plotly .axislayer-above text {
-    fill: #262730 !important;
-}
-.js-plotly-plot .plotly .xaxislayer-above path,
-.js-plotly-plot .plotly .yaxislayer-above path {
-    stroke: #262730 !important;
-}
-/* Override dark theme for tables */
-.stDataFrame {
-    background-color: white !important;
-    color: #262730 !important;
-}
-</style>
-"""
-
-# Gabungkan CSS dan JavaScript
-st.markdown(css + force_light_mode, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
 # --- PATHS ---
 DATA_PATH = "materials/Combined_modelling.xlsx"
