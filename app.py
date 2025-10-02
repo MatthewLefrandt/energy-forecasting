@@ -23,69 +23,38 @@ if 'popup_shown' not in st.session_state:
 # Function to close popup
 def close_popup():
     st.session_state.popup_shown = True
+    st.rerun()
 
-# Let's try a different approach - create a "modal" using a container
+# --- CONDITIONAL DISPLAY BASED ON POPUP STATE ---
 if not st.session_state.popup_shown:
-    # Add CSS for the modal
+    # Show only the welcome message when popup is active
+    st.markdown("<div style='text-align: center; padding: 40px; background-color: #f8f9fa; border-radius: 10px; margin-bottom: 30px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);'>", unsafe_allow_html=True)
+    st.markdown("<div style='font-size: 48px; margin-bottom: 20px;'>👋</div>", unsafe_allow_html=True)
+    st.markdown("<h1 style='color: #1E88E5; margin-bottom: 20px;'>Selamat Datang di Aplikasi Prediksi Produksi Energi!</h1>", unsafe_allow_html=True)
     st.markdown("""
-    <style>
-        .reportview-container .main .block-container {
-            max-width: 1200px;
-        }
-
-        div[data-testid="stVerticalBlock"] > div:first-child {
-            background-color: rgba(0, 0, 0, 0.5);
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-
-        .welcome-card {
-            background-color: white;
-            border-radius: 10px;
-            padding: 30px;
-            text-align: center;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-
-        .welcome-emoji {
-            font-size: 48px;
-            margin-bottom: 20px;
-        }
-
-        .welcome-title {
-            font-size: 24px;
-            font-weight: bold;
-            color: #1E88E5;
-            margin-bottom: 20px;
-        }
-    </style>
+    <p style='font-size: 18px; margin-bottom: 30px;'>
+    Untuk pengalaman terbaik, kami menyarankan Anda:
+    <br><br>
+    <b>1.</b> Gunakan <b>Light Mode</b> pada browser Anda
+    <br>
+    <b>2.</b> Atur <b>Zoom Browser</b> ke <b>75%</b> untuk tampilan optimal
+    <br><br>
+    Penyesuaian ini akan mencegah elemen tampilan saling tumpang tindih dan memastikan visualisasi data terlihat dengan sempurna.
+    </p>
     """, unsafe_allow_html=True)
 
-    # Create a welcome card at the top of the app
-    welcome = st.container()
-    with welcome:
-        st.markdown('<div class="welcome-card">', unsafe_allow_html=True)
-        st.markdown('<div class="welcome-emoji">👋</div>', unsafe_allow_html=True)
-        st.markdown('<div class="welcome-title">Selamat Datang di Aplikasi Prediksi Produksi Energi!</div>', unsafe_allow_html=True)
-        st.markdown("""
-        Untuk pengalaman terbaik, kami menyarankan Anda:
-
-        1. Gunakan **Light Mode** pada browser Anda
-        2. Atur **Zoom Browser** ke **75%** untuk tampilan optimal
-
-        Penyesuaian ini akan mencegah elemen tampilan saling tumpang tindih dan memastikan visualisasi data terlihat dengan sempurna.
-        """)
-
-        # Button to close the popup
-        if st.button("Mengerti, Lanjutkan"):
+    # Center the button
+    col1, col2, col3 = st.columns([1,2,1])
+    with col2:
+        if st.button("Mengerti, Lanjutkan", key="popup_button", use_container_width=True):
             close_popup()
-            st.rerun()
 
-        st.markdown('</div>', unsafe_allow_html=True)
-        st.markdown("<hr>", unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
-# --- CUSTOM CSS ---
+    # Stop rendering rest of the app
+    st.stop()
+
+# --- CUSTOM CSS --- (only shown after popup is closed)
 st.markdown("""
 <style>
     .main-header {
@@ -119,11 +88,9 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- HEADER --- 
-# Only show main header if popup is dismissed
-if st.session_state.popup_shown:
-    st.markdown('<h1 class="main-header">Prediksi Produksi Energi</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="sub-header">Visualisasi dan prediksi produksi energi berdasarkan model machine learning</p>', unsafe_allow_html=True)
+# --- HEADER ---
+st.markdown('<h1 class="main-header">Prediksi Produksi Energi</h1>', unsafe_allow_html=True)
+st.markdown('<p class="sub-header">Visualisasi dan prediksi produksi energi berdasarkan model machine learning</p>', unsafe_allow_html=True)
 
 # --- PATHS ---
 DATA_PATH = "materials/Combined_modelling.xlsx"
@@ -141,6 +108,7 @@ SCALER_PATHS = {
     "Biodiesel": "materials/scaler_biodiesel.pkl",
     "Fuel Ethanol": "materials/scaler_fuel_ethanol.pkl"
 }
+
 
 
 # --- LOAD DATA ---
