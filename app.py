@@ -11,16 +11,18 @@ DATA_PATH = "materials/Combined_modelling.xlsx"
 MODEL_PATHS = {
     "Batu Bara": "materials/svr_coal_model.pkl",
     "Gas Alam": "materials/svr_natural_gas_model.pkl",
-    "Minyak Bumi": "materials/svr_petroleum_model.pkl"
+    "Minyak Bumi": "materials/svr_petroleum_model.pkl",
+    "Biodiesel": "materials/linreg_biodiesel_model.pkl"  # Tambahkan model Biodiesel
 }
 SCALER_PATHS = {
     "Batu Bara": "materials/scaler_coal.pkl",
     "Gas Alam": "materials/scaler_natural_gas.pkl",
-    "Minyak Bumi": "materials/scaler_petroleum.pkl"
+    "Minyak Bumi": "materials/scaler_petroleum.pkl",
+    "Biodiesel": "materials/scaler_biodiesel.pkl"  # Tambahkan scaler Biodiesel
 }
 
 # --- LOAD DATA ---
-@st.cache
+@st.cache_data  # Gunakan cache_data yang lebih baru daripada st.cache
 def load_data(energy_type):
     """Load dan filter data berdasarkan jenis energi."""
     df = pd.read_excel(DATA_PATH)
@@ -28,20 +30,29 @@ def load_data(energy_type):
     df = df.T.reset_index()
     df.columns = ['Tahun', 'Produksi']
     df = df[1:]
-    df["Tahun"] = pd.to_datetime(df["Tahun"].astype(int), format='%Y')
-    df["Produksi"] = df["Produksi"].astype(float)
-    df = df.set_index("Tahun")
-    df = df.resample("MS").interpolate(method="linear")  # Resample ke bulanan
-    return df
+
+    # Jika Biodiesel, gunakan data tahunan
+    if energy_type == "Biodiesel":
+        df["Tahun"] = df["Tahun"].astype(int)
+        df["Produksi"] = df["Produksi"].astype(float)
+        df = df.set_index("Tahun")
+        return df
+    else:
+        # Untuk energi lain, gunakan konversi ke data bulanan
+        df["Tahun"] = pd.to_datetime(df["Tahun"].astype(int), format='%Y')
+        df["Produksi"] = df["Produksi"].astype(float)
+        df = df.set_index("Tahun")
+        df = df.resample("MS").interpolate(method="linear")  # Resample ke bulanan
+        return df
 
 # --- SMOOTHING FUNCTION ---
 def moving_average_smoothing(series, window=6):
     """Fungsi untuk melakukan smoothing menggunakan moving average."""
     return pd.Series(series).rolling(window=window, center=True, min_periods=1).mean()
 
-# --- FORECAST FUNCTION ---
-def forecast_production(year, model, scaler, data):
-    """Melakukan prediksi hingga bulan Desember tahun target."""
+# --- FORECAST FUNCTION FOR SVR MODELS (MONTHLY) ---
+def forecast_production_svr(year, model, scaler, data):
+    """Melakukan prediksi hingga bulan Desember tahun target untuk model SVR."""
     # Hitung jumlah bulan dari data terakhir hingga target tahun
     last_date = data.index[-1]
     target_date = pd.to_datetime(f"{year}-12-01")
@@ -71,13 +82,51 @@ def forecast_production(year, model, scaler, data):
 
     return future_df
 
+# --- FORECAST FUNCTION FOR LINEAR REGRESSION (YEARLY) ---
+def forecast_production_biodiesel(year, model, scaler, data):
+    """Melakukan prediksi hingga tahun target untuk model Linear Regression Biodiesel."""
+    # Ambil tahun terakhir dan nilai produksi terakhir
+    last_year = data.index[-1]
+    last_value = data["Produksi"].values[-1]
+
+    # Hitung tahun yang perlu diprediksi
+    future_years = list(range(last_year + 1, year + 1))
+
+    if not future_years:  # Jika tahun target <= tahun terakhir data
+        return pd.DataFrame()
+
+    # Lakukan prediksi tahun demi tahun
+    future_preds = []
+    recent_value = last_value
+
+    for _ in future_years:
+        # Buat input (lag 1 tahun)
+        lag_input = np.array([[recent_value]])
+        lag_scaled = scaler.transform(lag_input)
+        # Prediksi menggunakan model
+        pred = model.predict(lag_scaled)[0]
+        future_preds.append(pred)
+        recent_value = pred  # Update untuk tahun berikutnya
+
+    # Gabungkan prediksi dengan index tahun
+    future_df = pd.DataFrame({
+        "Tahun": future_years,
+        "Produksi": future_preds
+    }).set_index("Tahun")
+
+    # Terapkan smoothing pada hasil prediksi
+    future_df["Produksi"] = moving_average_smoothing(future_df["Produksi"], window=3)
+
+    return future_df
+
 # --- STREAMLIT APP ---
 st.title("Prediksi Produksi Energi")
-st.write("Aplikasi ini memprediksi produksi energi berdasarkan model SVR yang telah dilatih.")
+st.write("Aplikasi ini memprediksi produksi energi berdasarkan model yang telah dilatih.")
 
 # --- USER INPUT ---
 st.sidebar.header("Input Prediksi")
-energy_type = st.sidebar.selectbox("Pilih Jenis Energi", options=["Batu Bara", "Gas Alam", "Minyak Bumi"])
+energy_type = st.sidebar.selectbox("Pilih Jenis Energi", 
+                                  options=["Batu Bara", "Gas Alam", "Minyak Bumi", "Biodiesel"])
 target_year = st.sidebar.number_input("Masukkan Tahun Prediksi", min_value=2025, max_value=2100, value=2030, step=1)
 
 # --- LOAD MODEL & SCALER ---
@@ -86,50 +135,99 @@ try:
     scaler_path = SCALER_PATHS[energy_type]
 
     # Load model dan scaler
-    svr_model = joblib.load(model_path)
+    model = joblib.load(model_path)
     scaler = joblib.load(scaler_path)
 
     # Load data
     df = load_data(energy_type)
 
-    # --- RUN FORECAST ---
-    future_df = forecast_production(target_year, svr_model, scaler, df)
+   # --- RUN FORECAST ---
+    if energy_type == "Biodiesel":
+        future_df = forecast_production_biodiesel(target_year, model, scaler, df)
 
-    # --- DISPLAY RESULTS ---
-    try:
-        # Ambil hasil prediksi untuk bulan Desember di tahun target
-        december_prediction = future_df.loc[f"{target_year}-12", "Produksi"]
+        # --- DISPLAY RESULTS ---
+        try:
+            # Ambil hasil prediksi untuk tahun target
+            year_prediction = future_df.loc[target_year, "Produksi"]
 
-        # Pastikan hasil prediksi adalah scalar
-        if isinstance(december_prediction, pd.Series):
-            december_prediction = december_prediction.iloc[0]
+            # Pastikan hasil prediksi adalah scalar
+            if isinstance(year_prediction, pd.Series):
+                year_prediction = year_prediction.iloc[0]
 
-        if not pd.isnull(december_prediction):
+            if not pd.isnull(year_prediction):
+                st.subheader("Hasil Prediksi")
+                st.write(f"Prediksi Produksi Energi {energy_type} untuk Tahun {target_year}:")
+                st.write(f"{year_prediction:.2f}")
+            else:
+                st.subheader("Hasil Prediksi")
+                st.write(f"Tidak ada data prediksi untuk Tahun {target_year}.")
+
+            # --- PLOT RESULTS ---
+            st.subheader("Visualisasi Prediksi")
+            plt.figure(figsize=(12, 6))
+
+            # Plot data historis
+            plt.plot(df.index, df["Produksi"], label="Data Aktual", color="blue", marker='o')
+
+            # Persiapkan data untuk prediksi jika ada
+            if not future_df.empty:
+                # Plot prediksi
+                plt.plot(future_df.index, future_df["Produksi"], label="Prediksi (Smoothed)", 
+                         color="red", linestyle="--", marker='x')
+
+            plt.axvline(x=df.index.max(), color="black", linestyle=":", label="Awal Prediksi")
+            plt.title(f"Prediksi Produksi Energi {energy_type}")
+            plt.xlabel("Tahun")
+            plt.ylabel("Produksi")
+            plt.grid(True)
+            plt.legend()
+            st.pyplot(plt)
+
+        except KeyError:
             st.subheader("Hasil Prediksi")
-            st.write(f"Prediksi Produksi Energi {energy_type} untuk Bulan Desember Tahun {target_year}:")
-            st.write(f"{december_prediction:.2f}")
-        else:
+            st.write(f"Tidak ada data prediksi untuk Tahun {target_year}.")
+        except Exception as e:
+            st.subheader("Hasil Prediksi")
+            st.write(f"Terjadi error: {e}")
+    else:
+        # Untuk model SVR (data bulanan)
+        future_df = forecast_production_svr(target_year, model, scaler, df)
+
+        # --- DISPLAY RESULTS ---
+        try:
+            # Ambil hasil prediksi untuk bulan Desember di tahun target
+            december_prediction = future_df.loc[f"{target_year}-12", "Produksi"]
+
+            # Pastikan hasil prediksi adalah scalar
+            if isinstance(december_prediction, pd.Series):
+                december_prediction = december_prediction.iloc[0]
+
+            if not pd.isnull(december_prediction):
+                st.subheader("Hasil Prediksi")
+                st.write(f"Prediksi Produksi Energi {energy_type} untuk Bulan Desember Tahun {target_year}:")
+                st.write(f"{december_prediction:.2f}")
+            else:
+                st.subheader("Hasil Prediksi")
+                st.write(f"Tidak ada data prediksi untuk Bulan Desember Tahun {target_year}.")
+        except KeyError:
             st.subheader("Hasil Prediksi")
             st.write(f"Tidak ada data prediksi untuk Bulan Desember Tahun {target_year}.")
-    except KeyError:
-        st.subheader("Hasil Prediksi")
-        st.write(f"Tidak ada data prediksi untuk Bulan Desember Tahun {target_year}.")
-    except Exception as e:
-        st.subheader("Hasil Prediksi")
-        st.write(f"Terjadi error: {e}")
+        except Exception as e:
+            st.subheader("Hasil Prediksi")
+            st.write(f"Terjadi error: {e}")
 
-    # --- PLOT RESULTS ---
-    st.subheader("Visualisasi Prediksi")
-    plt.figure(figsize=(12, 6))
-    plt.plot(df.index, df["Produksi"], label="Data Aktual", color="blue")
-    plt.plot(future_df.index, future_df["Produksi"], label="Prediksi (Smoothed)", color="red", linestyle="--")
-    plt.axvline(x=pd.to_datetime("2025-01-01"), color="black", linestyle=":", label="Awal Prediksi")
-    plt.title(f"Prediksi Produksi Energi {energy_type}")
-    plt.xlabel("Tahun")
-    plt.ylabel("Produksi")
-    plt.grid(True)
-    plt.legend()
-    st.pyplot(plt)
+        # --- PLOT RESULTS ---
+        st.subheader("Visualisasi Prediksi")
+        plt.figure(figsize=(12, 6))
+        plt.plot(df.index, df["Produksi"], label="Data Aktual", color="blue")
+        plt.plot(future_df.index, future_df["Produksi"], label="Prediksi (Smoothed)", color="red", linestyle="--")
+        plt.axvline(x=pd.to_datetime("2025-01-01"), color="black", linestyle=":", label="Awal Prediksi")
+        plt.title(f"Prediksi Produksi Energi {energy_type}")
+        plt.xlabel("Tahun")
+        plt.ylabel("Produksi")
+        plt.grid(True)
+        plt.legend()
+        st.pyplot(plt)
 except Exception as e:
     st.subheader("Error")
     st.write(f"Terjadi error saat memuat model atau data: {e}")
