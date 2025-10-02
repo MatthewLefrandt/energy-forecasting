@@ -615,5 +615,5 @@ except Exception as e:
 
 # --- FOOTER ---
 st.markdown('<div class="footer">', unsafe_allow_html=True)
-st.markdown('© 2023 Prediksi Produksi Energi | Dibuat dengan Streamlit', unsafe_allow_html=True)
+st.markdown('© Matthew Lefrandt 2025 Prediksi Produksi Energi | Dibuat dengan Streamlit', unsafe_allow_html=True)
 st.markdown('</div>', unsafe_allow_html=True)
