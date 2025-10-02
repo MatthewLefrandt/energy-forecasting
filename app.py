@@ -411,6 +411,8 @@ try:
                     with st.expander("Tabel Data Prediksi", expanded=False):
                         future_table = future_df.reset_index()
                         future_table.columns = ["Tahun", "Produksi"]
+                        # Filter only years from 2025 onward
+                        future_table = future_table[future_table["Tahun"] >= 2025]
                         st.dataframe(future_table, use_container_width=True)
     else:
         # Prediksi untuk model SVR (data bulanan)
@@ -581,8 +583,10 @@ try:
                 yearly_future = future_df.resample('Y').mean().reset_index()
                 yearly_future["Tahun"] = yearly_future["Tahun"].dt.year
                 yearly_future = yearly_future.rename(columns={"Tahun": "Tahun", "Produksi": "Produksi (rata-rata)"})
+                # Filter only years from 2025 onward
+                yearly_future = yearly_future[yearly_future["Tahun"] >= 2025]
                 st.dataframe(yearly_future, use_container_width=True)
-
+    
 except FileNotFoundError:
     st.error(f"File model atau data tidak ditemukan untuk energi {energy_type}.")
     st.info("Pastikan semua file model dan data tersedia di folder 'materials'.")
