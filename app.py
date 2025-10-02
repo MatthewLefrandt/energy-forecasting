@@ -16,47 +16,27 @@ st.set_page_config(
 )
 
 # --- WELCOME POPUP ---
-welcome_popup = """
-<div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); 
-            display: flex; justify-content: center; align-items: center; z-index: 9999;" id="welcomePopup">
-    <div style="background-color: white; padding: 30px; border-radius: 10px; max-width: 500px; text-align: center; 
-                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);">
-        <div style="font-size: 40px; margin-bottom: 15px;">👋</div>
-        <div style="font-size: 22px; color: #1E88E5; margin-bottom: 15px; font-weight: bold;">
-            Selamat Datang di Aplikasi Prediksi Produksi Energi!
-        </div>
-        <p style="font-size: 16px; color: #424242; line-height: 1.5; margin-bottom: 20px;">
+# Use session state to control popup visibility
+if 'show_welcome' not in st.session_state:
+    st.session_state.show_welcome = True
+
+if st.session_state.show_welcome:
+    welcome_container = st.container()
+    with welcome_container:
+        col1, col2, col3 = st.columns([1, 3, 1])
+        with col2:
+            st.markdown("### 👋 Selamat Datang di Aplikasi Prediksi Produksi Energi!")
+            st.markdown("""
             Untuk pengalaman terbaik, kami menyarankan Anda:
-            <br><br>
-            <b>1.</b> Gunakan <b>Light Mode</b> pada browser Anda
-            <br>
-            <b>2.</b> Atur <b>Zoom Browser</b> ke <b>75%</b> untuk tampilan optimal
-            <br><br>
+
+            1. Gunakan **Light Mode** pada browser Anda
+            2. Atur **Zoom Browser** ke **75%** untuk tampilan optimal
+
             Penyesuaian ini akan mencegah elemen tampilan saling tumpang tindih dan memastikan visualisasi data terlihat dengan sempurna.
-        </p>
-        <button onclick="closeWelcomePopup()" style="background-color: #1E88E5; color: white; border: none; 
-                padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 16px;">
-            Mengerti, Lanjutkan
-        </button>
-    </div>
-</div>
-
-<script>
-function closeWelcomePopup() {
-    document.getElementById('welcomePopup').style.display = 'none';
-    localStorage.setItem('welcomeShown', 'true');
-}
-
-// Check if popup has been shown before
-document.addEventListener('DOMContentLoaded', function() {
-    if (localStorage.getItem('welcomeShown')) {
-        document.getElementById('welcomePopup').style.display = 'none';
-    }
-});
-</script>
-"""
-
-st.markdown(welcome_popup, unsafe_allow_html=True)
+            """)
+            if st.button("Mengerti, Lanjutkan"):
+                st.session_state.show_welcome = False
+                st.experimental_rerun()
 
 # --- CUSTOM CSS ---
 st.markdown("""
@@ -131,6 +111,7 @@ def load_data(energy_type):
         df = df.set_index("Tahun")
         df = df.resample("MS").interpolate(method="linear")
     return df
+    
 # --- SMOOTHING FUNCTION ---
 def moving_average_smoothing(series, window=6):
     """Fungsi untuk melakukan smoothing menggunakan moving average."""
