@@ -12,13 +12,15 @@ MODEL_PATHS = {
     "Batu Bara": "materials/svr_coal_model.pkl",
     "Gas Alam": "materials/svr_natural_gas_model.pkl",
     "Minyak Bumi": "materials/svr_petroleum_model.pkl",
-    "Biodiesel": "materials/linreg_biodiesel_model.pkl"
+    "Biodiesel": "materials/linreg_biodiesel_model.pkl",
+    "Fuel Ethanol": "materials/svr_fuel_ethanol_model.pkl"  # Tambahkan model Fuel Ethanol
 }
 SCALER_PATHS = {
     "Batu Bara": "materials/scaler_coal.pkl",
     "Gas Alam": "materials/scaler_natural_gas.pkl",
     "Minyak Bumi": "materials/scaler_petroleum.pkl",
-    "Biodiesel": "materials/scaler_biodiesel.pkl"
+    "Biodiesel": "materials/scaler_biodiesel.pkl",
+    "Fuel Ethanol": "materials/scaler_fuel_ethanol.pkl"  # Tambahkan scaler Fuel Ethanol
 }
 
 # --- LOAD DATA ---
@@ -129,7 +131,7 @@ st.write("Aplikasi ini memprediksi produksi energi berdasarkan model yang telah 
 # --- USER INPUT ---
 st.sidebar.header("Input Prediksi")
 energy_type = st.sidebar.selectbox("Pilih Jenis Energi", 
-                                  options=["Batu Bara", "Gas Alam", "Minyak Bumi", "Biodiesel"])
+                                  options=["Batu Bara", "Gas Alam", "Minyak Bumi", "Biodiesel", "Fuel Ethanol"])
 target_year = st.sidebar.number_input("Masukkan Tahun Prediksi", min_value=2025, max_value=2100, value=2030, step=1)
 
 # --- LOAD MODEL & SCALER ---
@@ -146,7 +148,9 @@ try:
 
     # Informasi tentang data yang digunakan
     if energy_type == "Biodiesel":
-        st.info(f"Data Biodiesel tersedia dari tahun {df.index.min()} hingga {df.index.max()}. Data sebelum tahun 2000 tidak tersedia.")
+        st.info(f"Data {energy_type} tersedia dari tahun {df.index.min()} hingga {df.index.max()}. Data sebelum tahun 2000 tidak tersedia.")
+    elif energy_type == "Fuel Ethanol":
+        st.info(f"Data {energy_type} tersedia dari tahun 1980 hingga 2022.")
 
     # --- RUN FORECAST ---
     if energy_type == "Biodiesel":
@@ -213,7 +217,7 @@ try:
             else:
                 st.error("Data Biodiesel tidak cukup untuk membuat prediksi setelah menerapkan lag.")
     else:
-        # Untuk model SVR (data bulanan)
+        # Untuk model SVR (termasuk Fuel Ethanol) - data bulanan
         future_df = forecast_production_svr(target_year, model, scaler, df)
 
         # --- DISPLAY RESULTS ---
@@ -253,4 +257,7 @@ try:
         st.pyplot(plt)
 except Exception as e:
     st.error(f"Terjadi error saat memuat model atau data: {e}")
-    st.info("Jika Anda memilih 'Biodiesel', pastikan file model dan data tersedia dan memiliki data yang cukup.")
+    if energy_type == "Fuel Ethanol":
+        st.info("Pastikan file model 'svr_fuel_ethanol_model.pkl' dan scaler 'scaler_fuel_ethanol.pkl' tersedia di folder 'materials'.")
+    elif energy_type == "Biodiesel":
+        st.info("Pastikan file model 'linreg_biodiesel_model.pkl' dan scaler 'scaler_biodiesel.pkl' tersedia di folder 'materials'.")
