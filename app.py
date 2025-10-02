@@ -27,12 +27,12 @@ def close_popup():
 
 # --- CONDITIONAL DISPLAY BASED ON POPUP STATE ---
 if not st.session_state.popup_shown:
-    # Show only the welcome message when popup is active
-    st.markdown("<div style='text-align: center; padding: 40px; background-color: #f8f9fa; border-radius: 10px; margin-bottom: 30px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);'>", unsafe_allow_html=True)
-    st.markdown("<div style='font-size: 48px; margin-bottom: 20px;'>👋</div>", unsafe_allow_html=True)
-    st.markdown("<h1 style='color: #1E88E5; margin-bottom: 20px;'>Selamat Datang di Aplikasi Prediksi Produksi Energi!</h1>", unsafe_allow_html=True)
+    # Show only the welcome message when popup is active - without the white box background
+    st.markdown("<div style='text-align: center; padding: 40px; margin-bottom: 30px;'>", unsafe_allow_html=True)
+    st.markdown("<div style='font-size: 60px; margin-bottom: 20px;'>👋</div>", unsafe_allow_html=True)
+    st.markdown("<h1 style='color: #1E88E5; font-size: 36px; margin-bottom: 30px;'>Selamat Datang di Aplikasi Prediksi Produksi Energi!</h1>", unsafe_allow_html=True)
     st.markdown("""
-    <p style='font-size: 18px; margin-bottom: 30px;'>
+    <p style='font-size: 22px; margin-bottom: 40px; line-height: 1.6;'>
     Untuk pengalaman terbaik, kami menyarankan Anda:
     <br><br>
     <b>1.</b> Gunakan <b>Light Mode</b> pada browser Anda
@@ -43,9 +43,25 @@ if not st.session_state.popup_shown:
     </p>
     """, unsafe_allow_html=True)
 
-    # Center the button
+    # Center the button and make it larger
     col1, col2, col3 = st.columns([1,2,1])
     with col2:
+        st.markdown("""
+        <style>
+        div.stButton > button {
+            font-size: 20px;
+            font-weight: bold;
+            padding: 12px 24px;
+            background-color: #1E88E5;
+            color: white;
+            border: none;
+            border-radius: 8px;
+        }
+        div.stButton > button:hover {
+            background-color: #1565C0;
+        }
+        </style>
+        """, unsafe_allow_html=True)
         if st.button("Mengerti, Lanjutkan", key="popup_button", use_container_width=True):
             close_popup()
 
@@ -108,9 +124,6 @@ SCALER_PATHS = {
     "Biodiesel": "materials/scaler_biodiesel.pkl",
     "Fuel Ethanol": "materials/scaler_fuel_ethanol.pkl"
 }
-
-
-
 # --- LOAD DATA ---
 @st.cache_data
 def load_data(energy_type):
