@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import pickle
+import joblib  # Ganti dari pickle ke joblib
 from sklearn.preprocessing import StandardScaler
 from datetime import datetime
 
@@ -11,12 +11,10 @@ SCALER_PATH = "materials/scaler_coal.pkl"
 DATA_PATH = "materials/Combined_modelling.xlsx"
 
 # Load SVR model
-with open(MODEL_PATH, 'rb') as model_file:
-    svr_model = pickle.load(model_file)
+svr_model = joblib.load(MODEL_PATH)
 
 # Load Scaler
-with open(SCALER_PATH, 'rb') as scaler_file:
-    scaler = pickle.load(scaler_file)
+scaler = joblib.load(SCALER_PATH)
 
 # --- LOAD DATA ---
 @st.cache
