@@ -80,13 +80,9 @@ def forecast_production(year, model, scaler, data):
 future_df = forecast_production(target_year, svr_model, scaler, df)
 
 # --- DISPLAY RESULTS ---
-# Ambil hasil prediksi untuk bulan Desember di tahun target
-december_prediction = future_df.loc[future_df.index.month == 12].loc[f"{target_year}-12", "Produksi"]
-
-# Tampilkan hasil prediksi
 st.subheader("Hasil Prediksi")
-st.write(f"Prediksi Produksi Energi Batu Bara untuk Bulan Desember Tahun {target_year}:")
-st.write(f"{december_prediction:.2f}")
+st.write(f"Prediksi Produksi Energi Batu Bara untuk Tahun {target_year}:")
+st.write(f"{future_df.loc[future_df.index[-1], 'Produksi']:.2f}")
 
 # --- PLOT RESULTS ---
 import matplotlib.pyplot as plt
