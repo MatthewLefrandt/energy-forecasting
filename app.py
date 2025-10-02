@@ -32,6 +32,11 @@ def load_data():
 
 df = load_data()
 
+# --- SMOOTHING FUNCTION ---
+def moving_average_smoothing(series, window=6):
+    """Fungsi untuk melakukan smoothing menggunakan moving average."""
+    return pd.Series(series).rolling(window=window, center=True, min_periods=1).mean()
+
 # --- STREAMLIT APP ---
 st.title("Prediksi Produksi Energi Batu Bara")
 st.write("Aplikasi ini memprediksi produksi energi batu bara berdasarkan model SVR yang telah dilatih.")
@@ -66,6 +71,9 @@ def forecast_production(year, model, scaler, data):
         "Produksi": future_preds
     }).set_index("Tahun")
 
+    # Terapkan smoothing pada hasil prediksi
+    future_df["Produksi"] = moving_average_smoothing(future_df["Produksi"])
+
     return future_df
 
 # --- RUN FORECAST ---
@@ -82,7 +90,7 @@ import matplotlib.pyplot as plt
 st.subheader("Visualisasi Prediksi")
 plt.figure(figsize=(12, 6))
 plt.plot(df.index, df["Produksi"], label="Data Aktual", color="blue")
-plt.plot(future_df.index, future_df["Produksi"], label="Prediksi", color="red", linestyle="--")
+plt.plot(future_df.index, future_df["Produksi"], label="Prediksi (Smoothed)", color="red", linestyle="--")
 plt.axvline(x=pd.to_datetime("2024-01-01"), color="black", linestyle=":", label="Awal Prediksi")
 plt.title("Prediksi Produksi Energi Batu Bara")
 plt.xlabel("Tahun")
