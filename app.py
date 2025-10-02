@@ -23,85 +23,67 @@ if 'popup_shown' not in st.session_state:
 # Function to close popup
 def close_popup():
     st.session_state.popup_shown = True
-    st.rerun()
 
-# Show popup if it hasn't been dismissed
+# Let's try a different approach - create a "modal" using a container
 if not st.session_state.popup_shown:
-    # Create a container for the popup
-    popup_container = st.container()
+    # Add CSS for the modal
+    st.markdown("""
+    <style>
+        .reportview-container .main .block-container {
+            max-width: 1200px;
+        }
 
-    with popup_container:
-        # Add custom styling for the popup
+        div[data-testid="stVerticalBlock"] > div:first-child {
+            background-color: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .welcome-card {
+            background-color: white;
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .welcome-emoji {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+
+        .welcome-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #1E88E5;
+            margin-bottom: 20px;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # Create a welcome card at the top of the app
+    welcome = st.container()
+    with welcome:
+        st.markdown('<div class="welcome-card">', unsafe_allow_html=True)
+        st.markdown('<div class="welcome-emoji">👋</div>', unsafe_allow_html=True)
+        st.markdown('<div class="welcome-title">Selamat Datang di Aplikasi Prediksi Produksi Energi!</div>', unsafe_allow_html=True)
         st.markdown("""
-        <style>
-            .popup-container {
-                background-color: rgba(0, 0, 0, 0.8);
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                z-index: 9999;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                padding: 20px;
-            }
-            .popup-content {
-                background-color: white;
-                border-radius: 10px;
-                box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
-                padding: 30px;
-                max-width: 600px;
-                width: 100%;
-                text-align: center;
-            }
-            .popup-title {
-                font-size: 24px;
-                font-weight: bold;
-                color: #1E88E5;
-                margin-bottom: 15px;
-            }
-            .popup-emoji {
-                font-size: 40px;
-                margin-bottom: 10px;
-            }
-            .stButton>button {
-                background-color: #1E88E5;
-                color: white;
-                font-weight: bold;
-                border: none;
-                padding: 10px 20px;
-                border-radius: 5px;
-                cursor: pointer;
-                margin-top: 20px;
-            }
-            .stButton>button:hover {
-                background-color: #1976D2;
-            }
-        </style>
-        """, unsafe_allow_html=True)
+        Untuk pengalaman terbaik, kami menyarankan Anda:
 
-        # Create columns to center the popup content
-        col1, col2, col3 = st.columns([1, 3, 1])
+        1. Gunakan **Light Mode** pada browser Anda
+        2. Atur **Zoom Browser** ke **75%** untuk tampilan optimal
 
-        with col2:
-            st.markdown('<div class="popup-content">', unsafe_allow_html=True)
-            st.markdown('<div class="popup-emoji">👋</div>', unsafe_allow_html=True)
-            st.markdown('<div class="popup-title">Selamat Datang di Aplikasi Prediksi Produksi Energi!</div>', unsafe_allow_html=True)
-            st.markdown("""
-            Untuk pengalaman terbaik, kami menyarankan Anda:
+        Penyesuaian ini akan mencegah elemen tampilan saling tumpang tindih dan memastikan visualisasi data terlihat dengan sempurna.
+        """)
 
-            1. Gunakan **Light Mode** pada browser Anda
-            2. Atur **Zoom Browser** ke **75%** untuk tampilan optimal
+        # Button to close the popup
+        if st.button("Mengerti, Lanjutkan"):
+            close_popup()
+            st.rerun()
 
-            Penyesuaian ini akan mencegah elemen tampilan saling tumpang tindih dan memastikan visualisasi data terlihat dengan sempurna.
-            """)
-
-            if st.button("Mengerti, Lanjutkan"):
-                close_popup()
-
-            st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown("<hr>", unsafe_allow_html=True)
 
 # --- CUSTOM CSS ---
 st.markdown("""
@@ -137,6 +119,12 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# --- HEADER --- 
+# Only show main header if popup is dismissed
+if st.session_state.popup_shown:
+    st.markdown('<h1 class="main-header">Prediksi Produksi Energi</h1>', unsafe_allow_html=True)
+    st.markdown('<p class="sub-header">Visualisasi dan prediksi produksi energi berdasarkan model machine learning</p>', unsafe_allow_html=True)
+
 # --- PATHS ---
 DATA_PATH = "materials/Combined_modelling.xlsx"
 MODEL_PATHS = {
@@ -153,6 +141,7 @@ SCALER_PATHS = {
     "Biodiesel": "materials/scaler_biodiesel.pkl",
     "Fuel Ethanol": "materials/scaler_fuel_ethanol.pkl"
 }
+
 
 # --- LOAD DATA ---
 @st.cache_data
