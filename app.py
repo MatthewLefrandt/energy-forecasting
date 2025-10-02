@@ -71,6 +71,15 @@ if not st.session_state.popup_shown:
         font-size: 40px;
         margin-bottom: 15px;
     }
+
+    /* Style for the popup button container */
+    .popup-button-container {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, 120px);
+        z-index: 10000;
+    }
     </style>
 
     <div class="popup-overlay" id="welcomePopup">
@@ -88,13 +97,18 @@ if not st.session_state.popup_shown:
             </div>
         </div>
     </div>
+    <div class="popup-button-container" id="popupButtonContainer"></div>
     """
 
     st.markdown(popup_html, unsafe_allow_html=True)
 
-    # Add a button for closing the popup
-    if st.button("Mengerti, Lanjutkan", key="popup_button"):
-        close_popup()
+    # Create a container div for the button with custom CSS
+    button_container = st.container()
+    with button_container:
+        col1, col2, col3 = st.columns([1, 1, 1])
+        with col2:
+            if st.button("Mengerti, Lanjutkan", key="popup_button"):
+                close_popup()
 
 # --- CUSTOM CSS ---
 st.markdown("""
@@ -127,32 +141,8 @@ st.markdown("""
         font-size: 0.8rem;
         border-top: 1px solid #e0e0e0;
     }
-
-    /* Hide the popup button until it's in view */
-    .stButton button {
-        z-index: 10000;
-        position: relative;
-    }
 </style>
 """, unsafe_allow_html=True)
-
-
-# Only show popup if it hasn't been dismissed
-if not st.session_state.popup_shown:
-    st.markdown('<div class="popup-container">', unsafe_allow_html=True)
-    with st.container():
-        st.markdown("### 👋 Selamat Datang di Aplikasi Prediksi Produksi Energi!")
-        st.markdown("""
-        Untuk pengalaman terbaik, kami menyarankan Anda:
-
-        1. Gunakan **Light Mode** pada browser Anda
-        2. Atur **Zoom Browser** ke **75%** untuk tampilan optimal
-
-        Penyesuaian ini akan mencegah elemen tampilan saling tumpang tindih dan memastikan visualisasi data terlihat dengan sempurna.
-        """)
-
-        st.button("Mengerti, Lanjutkan", on_click=close_popup, key="popup_button")
-    st.markdown('</div>', unsafe_allow_html=True)
 
 # --- PATHS ---
 DATA_PATH = "materials/Combined_modelling.xlsx"
@@ -170,6 +160,7 @@ SCALER_PATHS = {
     "Biodiesel": "materials/scaler_biodiesel.pkl",
     "Fuel Ethanol": "materials/scaler_fuel_ethanol.pkl"
 }
+
 # --- LOAD DATA ---
 @st.cache_data
 def load_data(energy_type):
