@@ -187,8 +187,7 @@ def load_data(energy_type):
         df = df.set_index("Tahun")
         df = df.resample("MS").interpolate(method="linear")
     return df
-    
-    
+
 # --- SMOOTHING FUNCTION ---
 def moving_average_smoothing(series, window=6):
     """Fungsi untuk melakukan smoothing menggunakan moving average."""
