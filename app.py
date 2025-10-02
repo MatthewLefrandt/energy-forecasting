@@ -6,9 +6,9 @@ from sklearn.preprocessing import StandardScaler
 from datetime import datetime
 
 # --- LOAD PRETRAINED MODEL AND SCALER ---
-MODEL_PATH = "C:/Users/u555804/Documents/BINUS/Skripsi/CODE - DEPLOYMENT/materials/svr_coal_model.pkl"
-SCALER_PATH = "C:/Users/u555804/Documents/BINUS/Skripsi/CODE - DEPLOYMENT/materials/scaler_coal.pkl"
-DATA_PATH = "C:/Users/u555804/Documents/BINUS/Skripsi/Combined_modelling.xlsx"
+MODEL_PATH = "energy-forecasting/materials/svr_coal_model.pkl"
+SCALER_PATH = "energy-forecasting/materials/scaler_coal.pkl"
+DATA_PATH = "energy-forecasting/materials/Combined_modelling.xlsx"
 
 # Load SVR model
 with open(MODEL_PATH, 'rb') as model_file:
