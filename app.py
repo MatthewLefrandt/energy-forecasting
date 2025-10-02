@@ -3,8 +3,6 @@ import pandas as pd
 import numpy as np
 import joblib
 from datetime import datetime
-import matplotlib.pyplot as plt
-import plotly.express as px
 import plotly.graph_objects as go
 
 # --- SETUP PAGE CONFIG ---
@@ -13,80 +11,62 @@ st.set_page_config(
     page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded",
-    menu_items={
-        'Get Help': None,
-        'Report a bug': None,
-        'About': 'Aplikasi Prediksi Produksi Energi'
-    }
 )
 
 # --- CUSTOM CSS ---
-st.markdown("""
+# Gunakan string tunggal untuk menghindari masalah tokenisasi
+css = """
 <style>
-    /* Force light mode */
-    .stApp {
-        background-color: #FFFFFF;
-        color: #000000;
-    }
-
-    /* Increase spacing between chart title and content */
-    .js-plotly-plot .plotly .main-svg {
-        margin-top: 20px !important;
-    }
-
-    /* Ensure text is visible in light mode */
-    p, h1, h2, h3, h4, h5, h6, .css-145kmo2 {
-        color: #262730 !important;
-    }
-
-    .main-header {
-        font-size: 2.5rem;
-        color: #1E88E5 !important;
-        margin-bottom: 0.5rem;
-    }
-    .sub-header {
-        font-size: 1.1rem;
-        color: #424242 !important;
-        margin-bottom: 2rem;
-    }
-    .prediction-card {
-        background-color: #f0f7ff;
-        border-left: 5px solid #1E88E5;
-        padding: 20px;
-        border-radius: 5px;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-        margin-top: 1rem;
-        margin-bottom: 1.5rem;
-    }
-    .prediction-label {
-        font-size: 1rem;
-        color: #616161 !important;
-        margin-bottom: 0.5rem;
-    }
-    .prediction-value {
-        font-size: 2.5rem;
-        font-weight: bold;
-        color: #1E88E5 !important;
-        margin: 0;
-    }
-    .result-title {
-        font-size: 1.5rem;
-        font-weight: bold;
-        color: #212121 !important;
-        margin-bottom: 1rem;
-    }
-    .footer {
-        margin-top: 3rem;
-        padding-top: 1rem;
-        color: #9e9e9e !important;
-        font-size: 0.8rem;
-        border-top: 1px solid #e0e0e0;
-    }
-    .metrics-container {
-        margin-top: 1.5rem;
-    }
+.stApp {
+    background-color: #FFFFFF;
+    color: #000000;
+}
+.main-header {
+    font-size: 2.5rem;
+    color: #1E88E5 !important;
+    margin-bottom: 0.5rem;
+}
+.sub-header {
+    font-size: 1.1rem;
+    color: #424242 !important;
+    margin-bottom: 2rem;
+}
+.prediction-card {
+    background-color: #f0f7ff;
+    border-left: 5px solid #1E88E5;
+    padding: 20px;
+    border-radius: 5px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    margin-top: 1rem;
+    margin-bottom: 1.5rem;
+}
+.prediction-label {
+    font-size: 1rem;
+    color: #616161 !important;
+    margin-bottom: 0.5rem;
+}
+.prediction-value {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: #1E88E5 !important;
+    margin: 0;
+}
+.result-title {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #212121 !important;
+    margin-bottom: 1rem;
+}
+.footer {
+    margin-top: 3rem;
+    padding-top: 1rem;
+    color: #9e9e9e !important;
+    font-size: 0.8rem;
+    border-top: 1px solid #e0e0e0;
+}
 </style>
-""", unsafe_allow_html=True)
+"""
+st.markdown(css, unsafe_allow_html=True)
 
 # --- PATHS ---
 DATA_PATH = "materials/Combined_modelling.xlsx"
@@ -103,6 +83,23 @@ SCALER_PATHS = {
     "Minyak Bumi": "materials/scaler_petroleum.pkl",
     "Biodiesel": "materials/scaler_biodiesel.pkl",
     "Fuel Ethanol": "materials/scaler_fuel_ethanol.pkl"
+}
+
+# --- ENERGY ICONS AND COLORS ---
+ENERGY_ICONS = {
+    "Batu Bara": "🪨",
+    "Gas Alam": "💨",
+    "Minyak Bumi": "🛢️",
+    "Biodiesel": "🌱",
+    "Fuel Ethanol": "🌽"
+}
+
+ENERGY_COLORS = {
+    "Batu Bara": "#37474F",
+    "Gas Alam": "#039BE5",
+    "Minyak Bumi": "#FF6F00",
+    "Biodiesel": "#33691E",
+    "Fuel Ethanol": "#8D6E63"
 }
 
 # --- LOAD DATA ---
@@ -184,23 +181,6 @@ def forecast_production_biodiesel(year, model, scaler, data):
 
     future_df["Produksi"] = moving_average_smoothing(future_df["Produksi"], window=3)
     return future_df
-
-# --- ENERGY ICONS AND COLORS ---
-ENERGY_ICONS = {
-    "Batu Bara": "🪨",
-    "Gas Alam": "💨",
-    "Minyak Bumi": "🛢️",
-    "Biodiesel": "🌱",
-    "Fuel Ethanol": "🌽"
-}
-
-ENERGY_COLORS = {
-    "Batu Bara": "#37474F",
-    "Gas Alam": "#039BE5",
-    "Minyak Bumi": "#FF6F00",
-    "Biodiesel": "#33691E",
-    "Fuel Ethanol": "#8D6E63"
-}
 
 # --- HEADER ---
 st.markdown('<h1 class="main-header">Prediksi Produksi Energi</h1>', unsafe_allow_html=True)
@@ -300,13 +280,16 @@ try:
                         x=df.index[-1], 
                         line_width=1, 
                         line_dash="dash", 
-                        line_color="gray",
-                        annotation=dict(
-                            text="Mulai Prediksi",
-                            font=dict(color="gray", size=12),
-                            showarrow=False,
-                            yshift=10
-                        )
+                        line_color="gray"
+                    )
+
+                    # Text label for the vertical line
+                    fig.add_annotation(
+                        x=df.index[-1],
+                        y=df["Produksi"].max() * 0.95,
+                        text="Mulai Prediksi",
+                        showarrow=False,
+                        font=dict(size=12, color="gray")
                     )
 
                     # Layout dengan padding atas yang lebih besar
@@ -347,12 +330,14 @@ try:
                         if not pd.isnull(year_prediction):
                             st.markdown('<div class="result-title">Hasil Prediksi</div>', unsafe_allow_html=True)
 
-                            st.markdown(f'''
+                            # Gunakan HTML yang lebih sederhana untuk menghindari masalah tokenisasi
+                            prediction_html = f"""
                             <div class="prediction-card">
                                 <div class="prediction-label">Produksi {energy_type} Tahun {target_year}:</div>
                                 <div class="prediction-value">{year_prediction:.2f}</div>
                             </div>
-                            ''', unsafe_allow_html=True)
+                            """
+                            st.markdown(prediction_html, unsafe_allow_html=True)
 
                             # Data ringkasan
                             st.markdown('<div class="result-title">Ringkasan Data</div>', unsafe_allow_html=True)
@@ -459,13 +444,16 @@ try:
                 x=pd.to_datetime(first_pred_date), 
                 line_width=1, 
                 line_dash="dash", 
-                line_color="gray",
-                annotation=dict(
-                    text="Mulai Prediksi",
-                    font=dict(color="gray", size=12),
-                    showarrow=False,
-                    yshift=10
-                )
+                line_color="gray"
+            )
+
+            # Text label sebagai pengganti panah
+            fig.add_annotation(
+                x=pd.to_datetime(first_pred_date),
+                y=yearly_df["Produksi"].mean() * 1.2,
+                text="Mulai Prediksi",
+                showarrow=False,
+                font=dict(size=12, color="gray")
             )
 
             # Layout dengan padding atas yang lebih besar
@@ -506,12 +494,14 @@ try:
                 if not pd.isnull(december_prediction):
                     st.markdown('<div class="result-title">Hasil Prediksi</div>', unsafe_allow_html=True)
 
-                    st.markdown(f'''
+                    # Gunakan HTML yang lebih sederhana
+                    prediction_html = f"""
                     <div class="prediction-card">
                         <div class="prediction-label">Produksi {energy_type} Desember {target_year}:</div>
                         <div class="prediction-value">{december_prediction:.2f}</div>
                     </div>
-                    ''', unsafe_allow_html=True)
+                    """
+                    st.markdown(prediction_html, unsafe_allow_html=True)
 
                     # Data ringkasan
                     st.markdown('<div class="result-title">Ringkasan Data</div>', unsafe_allow_html=True)
