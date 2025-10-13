@@ -760,37 +760,30 @@ try:
                             delta_properties['decreasing']['color'] = "red"
 
                         # Buat speedometer chart dengan Plotly yang lebih menarik dan interaktif
-                        # Buat speedometer chart dengan posisi label yang disesuaikan
                         gauge_fig = go.Figure(go.Indicator(
-                            mode="gauge+number",
-                            value=max(0, display_value),
+                            mode="gauge",  # Hanya tampilkan gauge, tanpa label bawaan
+                            value=max(0, display_value),  # Pastikan tidak negatif untuk gauge
                             domain={'x': [0, 1], 'y': [0, 1]},
                             title={
                                 'text': f"<b>Cadangan {energy_type} Tersisa</b>", 
-                                'font': {'size': 24, 'family': 'Arial, sans-serif', 'color': '#808080'}
-                            },
-                            number={
-                                'suffix': '%',
-                                'font': {'size': 26, 'family': 'Arial, sans-serif', 'color': gauge_color},
-                                'prefix': '',
-                                # Posisikan label persentase lebih ke atas
+                                'font': {'size': 24, 'family': 'Arial, sans-serif', 'color': '#808080'}  # Abu-abu
                             },
                             gauge={
                                 'axis': {
                                     'range': [0, 100], 
                                     'tickwidth': 1, 
-                                    'tickcolor': "rgba(0,0,0,0)",
-                                    'tickfont': {'size': 14, 'color': '#808080'},
-                                    'showticklabels': True
+                                    'tickcolor': "rgba(0,0,0,0)",  # Warna tick yang transparan
+                                    'tickfont': {'size': 14, 'color': '#808080'},  # Abu-abu
+                                    'showticklabels': True  # Tetap tampilkan label
                                 },
                                 'bar': {'color': gauge_color, 'thickness': 0.7},
-                                'bgcolor': 'rgba(255, 255, 255, 0)',
-                                'borderwidth': 0,
-                                'bordercolor': "rgba(0,0,0,0)",
+                                'bgcolor': 'rgba(255, 255, 255, 0)',  # Sepenuhnya transparan
+                                'borderwidth': 0,  # Tanpa border
+                                'bordercolor': "rgba(0,0,0,0)",  # Transparan
                                 'steps': [
-                                    {'range': [0, 20], 'color': 'rgba(255, 99, 71, 0.25)'},
-                                    {'range': [20, 50], 'color': 'rgba(255, 165, 0, 0.25)'},
-                                    {'range': [50, 100], 'color': 'rgba(144, 238, 144, 0.25)'}
+                                    {'range': [0, 20], 'color': 'rgba(255, 99, 71, 0.25)'},  # Merah sangat transparan
+                                    {'range': [20, 50], 'color': 'rgba(255, 165, 0, 0.25)'},  # Oranye sangat transparan
+                                    {'range': [50, 100], 'color': 'rgba(144, 238, 144, 0.25)'}  # Hijau sangat transparan
                                 ],
                                 'threshold': {
                                     'line': {'color': "red", 'width': 3},
@@ -800,72 +793,47 @@ try:
                             }
                         ))
                         
-                        # Tambahkan teks keterangan nilai numerik dengan posisi yang diatur ulang
-                        reserve_text = f"{abs(remaining_reserves):,.0f}"
-                        if remaining_reserves < 0:
-                            reserve_text = f"-{reserve_text}"
-                            text_color = "red"
-                        else:
-                            text_color = "#808080"
-                        
-                        # Posisikan label persentase di atas dengan mengatur ulang anotasi
+                        # Tambahkan label persentase di posisi atas
                         gauge_fig.add_annotation(
-                            x=0.5, y=0.65,  # Posisi vertikal yang lebih tinggi (0.65 vs 0.5 default)
+                            x=0.5, y=0.65,
                             text=f"{max(0, display_value):.1f}%",
                             font={'size': 26, 'color': gauge_color, 'family': 'Arial, sans-serif', 'weight': 'bold'},
                             showarrow=False
                         )
                         
-                        # Label nilai numerik di bawah label persentase
+                        # Tambahkan teks keterangan nilai numerik (tanpa T BTU)
+                        reserve_text = f"{abs(remaining_reserves):,.0f}"
+                        if remaining_reserves < 0:
+                            reserve_text = f"-{reserve_text}"  # Hanya tambahkan tanda minus jika negatif
+                            text_color = "red"
+                        else:
+                            text_color = "#808080"  # Abu-abu
+                        
+                        # Tambahkan label nilai di posisi bawah
                         gauge_fig.add_annotation(
-                            x=0.5, y=0.45,  # Posisi di bawah label persentase
+                            x=0.5, y=0.45,
                             text=reserve_text,
                             font={'size': 22, 'color': text_color, 'family': 'Arial, sans-serif', 'weight': 'bold'},
                             showarrow=False
                         )
                         
-                        # Hapus label persentase bawaan dari gauge
+                        # Layout yang lebih menarik dan konsisten dengan visualisasi prediksi
                         gauge_fig.update_layout(
-                            annotations=[
-                                # Hapus semua anotasi default
-                            ] + [ann for ann in gauge_fig.layout.annotations if ann.get('text') != f"{max(0, display_value):.1f}%"]
-                        )
-
-                        # Tambahkan teks keterangan nilai numerik (tanpa T BTU dan tanpa teks defisit)
-                        reserve_text = f"{abs(remaining_reserves):,.0f}"
-                        if remaining_reserves < 0:
-                            reserve_text = f"-{reserve_text}"  # Hapus teks "(Defisit)", hanya tampilkan nilai dengan tanda minus
-                            text_color = "red"
-                        else:
-                            text_color = "#808080"  # Abu-abu
-                        
-                        gauge_fig.add_annotation(
-                            x=0.5, y=0.3,
-                            text=reserve_text,
-                            font={'size': 22, 'color': text_color, 'family': 'Arial, sans-serif', 'weight': 'bold'},
-                            showarrow=False,
-                            hovertext="Total cadangan yang tersisa (nilai absolut)"
-                        )
-                        
-                        # Hapus anotasi estimasi tahun habis di speedometer (sudah tidak ada dalam kode)
-                        
-                        # Tooltip juga disederhanakan, hapus teks tambahan
-                        gauge_fig.add_trace(go.Scatter(
-                            x=[0.5],
-                            y=[0.5],
-                            mode="markers",
-                            marker=dict(
-                                size=1,
-                                color="rgba(0,0,0,0)"
+                            height=450,
+                            margin=dict(l=20, r=20, t=60, b=20),
+                            paper_bgcolor="rgba(0,0,0,0)",  # Paper background transparan
+                            plot_bgcolor="rgba(0,0,0,0)",   # Plot background transparan
+                            font={'color': "#808080", 'family': "Arial, sans-serif"},  # Abu-abu
+                            template="plotly_white",
+                            hovermode="closest",
+                            hoverlabel=dict(
+                                bgcolor="white",
+                                font_size=14,
+                                font_family="Arial, sans-serif"
                             ),
-                            hoverinfo="text",
-                            hovertext=f"<b>Detail Cadangan {energy_type}</b><br>" +
-                                    f"Total cadangan awal: {ENERGY_RESERVES[energy_type]:,.0f}<br>" +
-                                    f"Cadangan tersisa: {reserve_text}<br>" +
-                                    f"Persentase tersisa: {max(0, percentage_remaining):.1f}%",
                             showlegend=False
-                        ))
-
+                        )
+                        
                         # Tambahkan interaktivitas melalui tooltip kustom
                         gauge_fig.add_trace(go.Scatter(
                             x=[0.5],
@@ -882,7 +850,7 @@ try:
                                      f"Persentase tersisa: {max(0, percentage_remaining):.1f}%",
                             showlegend=False
                         ))
-
+                        
                         # Tampilkan chart
                         st.plotly_chart(gauge_fig, use_container_width=True, config={'displayModeBar': False})
 
