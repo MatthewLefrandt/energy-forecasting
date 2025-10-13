@@ -46,24 +46,6 @@ st.markdown("""
         font-size: 0.8rem;
         border-top: 1px solid #e0e0e0;
     }
-
-    /* Paksa warna teks Plotly menjadi putih */
-    .js-plotly-plot .plotly .gtitle,
-    .js-plotly-plot .plotly .xtitle,
-    .js-plotly-plot .plotly .ytitle,
-    .js-plotly-plot .plotly .g-gtitle,
-    .js-plotly-plot .plotly .g-xtitle,
-    .js-plotly-plot .plotly .g-ytitle {
-        color: grey !important;
-        fill: grey !important;
-    }
-
-    /* Paksa warna teks tick menjadi putih */
-    .js-plotly-plot .plotly .xtick text,
-    .js-plotly-plot .plotly .ytick text {
-        color: grey !important;
-        fill: grey !important;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -492,20 +474,20 @@ try:
                     fig.update_layout(
                         title=dict(
                             text=f"Produksi {energy_type} (Historis dan Prediksi)",
-                            font=dict(color='grey', size=20)
+                            font=dict(color='#808080', size=20)  # Abu-abu
                         ),
                         xaxis=dict(
                             showgrid=False,
                             gridcolor='rgba(0,0,0,0)',
-                            tickfont=dict(color='grey', size=14),
-                            title_font=dict(color='grey', size=16),
+                            tickfont=dict(color='#808080', size=14),  # Abu-abu
+                            title_font=dict(color='#808080', size=16),  # Abu-abu
                             title_text="Tahun"
                         ),
                         yaxis=dict(
                             showgrid=False,
                             gridcolor='rgba(0,0,0,0)',
-                            tickfont=dict(color='grey', size=14),
-                            title_font=dict(color='grey', size=16),
+                            tickfont=dict(color='#808080', size=14),  # Abu-abu
+                            title_font=dict(color='#808080', size=16),  # Abu-abu
                             title_text="Produksi"
                         ),
                         plot_bgcolor='rgba(0,0,0,0)',
@@ -518,9 +500,9 @@ try:
                             y=1.02,
                             xanchor="right",
                             x=1,
-                            font=dict(color="grey")
+                            font=dict(color="#808080")  # Abu-abu
                         ),
-                        font=dict(family="Arial, sans-serif", color="grey")
+                        font=dict(family="Arial, sans-serif", color="#808080")  # Abu-abu
                     )
 
                     st.plotly_chart(fig, use_container_width=True)
@@ -640,45 +622,45 @@ try:
             ))
 
             # Agregasi data prediksi ke tahunan
-            if not future_df.empty:
-                future_yearly = future_df.resample('Y').mean()
+                if not future_df.empty:
+                    future_yearly = future_df.resample('Y').mean()
 
-                # Data prediksi (tahunan)
-                fig.add_trace(go.Scatter(
-                    x=future_yearly.index, 
-                    y=future_yearly["Produksi"],
-                    mode='lines+markers',
-                    name='Prediksi (Rata-rata Tahunan)',
-                    line=dict(color='#FF5252', width=2),
-                    marker=dict(size=8, symbol='diamond')
-                ))
-
-                # Data prediksi (bulanan, optional)
-                fig.add_trace(go.Scatter(
-                    x=future_df.index, 
-                    y=future_df["Produksi"],
-                    mode='lines',
-                    name='Prediksi (Bulanan)',
-                    line=dict(color='#FF5252', width=1, dash='dot'),
-                    opacity=0.3,
-                    visible='legendonly'  # Sembunyikan secara default
-                ))
-
-                # Highlight khusus untuk bulan Desember tahun target
-                target_date = pd.to_datetime(f"{target_year}-12-01")
-                if target_date in future_df.index:
+                    # Data prediksi (tahunan)
                     fig.add_trace(go.Scatter(
-                        x=[target_date],
-                        y=[future_df.loc[target_date, "Produksi"]],
-                        mode='markers',
-                        name=f'Prediksi Des {target_year}',
-                        marker=dict(
-                            color='#FF5252',
-                            size=12,
-                            symbol='star',
-                            line=dict(color='#FF5252', width=2)
-                        )
+                        x=future_yearly.index, 
+                        y=future_yearly["Produksi"],
+                        mode='lines+markers',
+                        name='Prediksi (Rata-rata Tahunan)',
+                        line=dict(color='#FF5252', width=2),
+                        marker=dict(size=8, symbol='diamond')
                     ))
+
+                    # Data prediksi (bulanan, optional)
+                    fig.add_trace(go.Scatter(
+                        x=future_df.index, 
+                        y=future_df["Produksi"],
+                        mode='lines',
+                        name='Prediksi (Bulanan)',
+                        line=dict(color='#FF5252', width=1, dash='dot'),
+                        opacity=0.3,
+                        visible='legendonly'  # Sembunyikan secara default
+                    ))
+
+                    # Highlight khusus untuk bulan Desember tahun target
+                    target_date = pd.to_datetime(f"{target_year}-12-01")
+                    if target_date in future_df.index:
+                        fig.add_trace(go.Scatter(
+                            x=[target_date],
+                            y=[future_df.loc[target_date, "Produksi"]],
+                            mode='markers',
+                            name=f'Prediksi Des {target_year}',
+                            marker=dict(
+                                color='#FF5252',
+                                size=12,
+                                symbol='star',
+                                line=dict(color='#FF5252', width=2)
+                            )
+                        ))
 
                 # Garis vertikal pemisah dengan perbaikan
                 # Gunakan pendekatan alternatif untuk menghindari error tanggal
@@ -702,27 +684,27 @@ try:
                     arrowhead=1,
                     ax=40,
                     ay=-40,
-                    font=dict(color="grey")
+                    font=dict(color="#808080")  # Abu-abu
                 )
 
                 # Layout
                 fig.update_layout(
                     title=dict(
                         text=f"Produksi {energy_type} (Historis dan Prediksi)",
-                        font=dict(color='grey', size=20)
+                        font=dict(color='#808080', size=20)  # Abu-abu
                     ),
                     xaxis=dict(
                         showgrid=False,
                         gridcolor='rgba(0,0,0,0)',
-                        tickfont=dict(color='grey', size=14),
-                        title_font=dict(color='grey', size=16),
+                        tickfont=dict(color='#808080', size=14),  # Abu-abu
+                        title_font=dict(color='#808080', size=16),  # Abu-abu
                         title_text="Tahun"
                     ),
                     yaxis=dict(
                         showgrid=False,
                         gridcolor='rgba(0,0,0,0)',
-                        tickfont=dict(color='grey', size=14),
-                        title_font=dict(color='grey', size=16),
+                        tickfont=dict(color='#808080', size=14),  # Abu-abu
+                        title_font=dict(color='#808080', size=16),  # Abu-abu
                         title_text="Produksi"
                     ),
                     plot_bgcolor='rgba(0,0,0,0)',
@@ -735,9 +717,9 @@ try:
                         y=1.02,
                         xanchor="right",
                         x=1,
-                        font=dict(color="grey")
+                        font=dict(color="#808080")  # Abu-abu
                     ),
-                    font=dict(family="Arial, sans-serif", color="grey")
+                    font=dict(family="Arial, sans-serif", color="#808080")  # Abu-abu
                 )
 
                 st.plotly_chart(fig, use_container_width=True)
@@ -784,7 +766,7 @@ try:
                             domain={'x': [0, 1], 'y': [0, 1]},
                             title={
                                 'text': f"<b>Cadangan {energy_type} Tersisa</b>", 
-                                'font': {'size': 24, 'family': 'Arial, sans-serif', 'color': 'grey'}  # Ubah ke putih
+                                'font': {'size': 24, 'family': 'Arial, sans-serif', 'color': '#808080'}  # Abu-abu
                             },
                             delta=delta_properties,
                             number={
@@ -796,7 +778,7 @@ try:
                                     'range': [0, 100], 
                                     'tickwidth': 1, 
                                     'tickcolor': "rgba(0,0,0,0)",  # Warna tick yang transparan
-                                    'tickfont': {'size': 14, 'color': 'grey'},  # Ubah ke putih
+                                    'tickfont': {'size': 14, 'color': '#808080'},  # Abu-abu
                                     'showticklabels': True  # Tetap tampilkan label
                                 },
                                 'bar': {'color': gauge_color, 'thickness': 0.7},
@@ -822,7 +804,7 @@ try:
                             reserve_text = f"-{reserve_text} (Defisit)"
                             text_color = "red"
                         else:
-                            text_color = "grey"  # Ubah ke putih
+                            text_color = "#808080"  # Abu-abu
 
                         gauge_fig.add_annotation(
                             x=0.5, y=0.3,
@@ -838,11 +820,11 @@ try:
                             margin=dict(l=20, r=20, t=60, b=20),
                             paper_bgcolor="rgba(0,0,0,0)",  # Paper background transparan
                             plot_bgcolor="rgba(0,0,0,0)",   # Plot background transparan
-                            font={'color': "grey", 'family': "Arial, sans-serif"},  # Ubah semua font ke putih
-                            template="plotly_grey",
+                            font={'color': "#808080", 'family': "Arial, sans-serif"},  # Abu-abu
+                            template="plotly_white",
                             hovermode="closest",
                             hoverlabel=dict(
-                                bgcolor="grey",
+                                bgcolor="white",
                                 font_size=14,
                                 font_family="Arial, sans-serif"
                             ),
