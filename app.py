@@ -782,37 +782,37 @@ try:
                             showarrow=False
                         )
                     else:
-                        years_until_depletion = depletion_year - datetime.now().year
-                        gauge_fig.add_annotation(
-                            x=0.5, y=0.15,
-                            text=f"Estimasi habis: {depletion_year:.1f} (≈ {years_until_depletion:.1f} tahun lagi)",
-                            font={'size': 14, 'color': 'red' if years_until_depletion < 50 else 'black'},
-                            showarrow=False
+                            years_until_depletion = depletion_year - datetime.now().year
+                            gauge_fig.add_annotation(
+                                x=0.5, y=0.15,
+                                text=f"Estimasi habis: {depletion_year:.1f} (≈ {years_until_depletion:.1f} tahun lagi)",
+                                font={'size': 14, 'color': 'red' if years_until_depletion < 50 else 'black'},
+                                showarrow=False
+                            )
+
+                        # Layout
+                        gauge_fig.update_layout(
+                            height=400,
+                            margin=dict(l=20, r=20, t=60, b=20),
+                            paper_bgcolor="white",
+                            font={'color': "darkblue", 'family': "Arial"}
                         )
 
-                    # Layout
-                    gauge_fig.update_layout(
-                        height=400,
-                        margin=dict(l=20, r=20, t=60, b=20),
-                        paper_bgcolor="white",
-                        font={'color': "darkblue", 'family': "Arial"}
-                    )
+                        st.plotly_chart(gauge_fig, use_container_width=True)
 
-                    st.plotly_chart(gauge_fig, use_container_width=True)
-
-            # Tambah tabel ringkasan (opsional, bisa dihide secara default)
-            with st.expander("Tabel Data Prediksi", expanded=False):
-                yearly_future = future_df.resample('Y').mean().reset_index()
-                yearly_future["Tahun"] = yearly_future["Tahun"].dt.year
-                yearly_future = yearly_future.rename(columns={"Tahun": "Tahun", "Produksi": "Produksi (rata-rata)"})
-                st.dataframe(yearly_future, use_container_width=True)
+                # Tambah tabel ringkasan (opsional, bisa dihide secara default)
+                with st.expander("Tabel Data Prediksi", expanded=False):
+                    yearly_future = future_df.resample('Y').mean().reset_index()
+                    yearly_future["Tahun"] = yearly_future["Tahun"].dt.year
+                    yearly_future = yearly_future.rename(columns={"Tahun": "Tahun", "Produksi": "Produksi (rata-rata)"})
+                    st.dataframe(yearly_future, use_container_width=True)
 
 except FileNotFoundError:
-st.error(f"File model atau data tidak ditemukan untuk energi {energy_type}.")
-st.info("Pastikan semua file model dan data tersedia di folder 'materials'.")
+    st.error(f"File model atau data tidak ditemukan untuk energi {energy_type}.")
+    st.info("Pastikan semua file model dan data tersedia di folder 'materials'.")
 except Exception as e:
-st.error(f"Terjadi kesalahan: {str(e)}")
-st.info("Coba pilih jenis energi lain atau sesuaikan parameter prediksi.")
+    st.error(f"Terjadi kesalahan: {str(e)}")
+    st.info("Coba pilih jenis energi lain atau sesuaikan parameter prediksi.")
 
 # --- FOOTER ---
 st.markdown('<div class="footer">', unsafe_allow_html=True)
