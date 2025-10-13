@@ -622,45 +622,45 @@ try:
             ))
 
             # Agregasi data prediksi ke tahunan
-                if not future_df.empty:
-                    future_yearly = future_df.resample('Y').mean()
+            if not future_df.empty:
+                future_yearly = future_df.resample('Y').mean()
 
-                    # Data prediksi (tahunan)
+                # Data prediksi (tahunan)
+                fig.add_trace(go.Scatter(
+                    x=future_yearly.index, 
+                    y=future_yearly["Produksi"],
+                    mode='lines+markers',
+                    name='Prediksi (Rata-rata Tahunan)',
+                    line=dict(color='#FF5252', width=2),
+                    marker=dict(size=8, symbol='diamond')
+                ))
+
+                # Data prediksi (bulanan, optional)
+                fig.add_trace(go.Scatter(
+                    x=future_df.index, 
+                    y=future_df["Produksi"],
+                    mode='lines',
+                    name='Prediksi (Bulanan)',
+                    line=dict(color='#FF5252', width=1, dash='dot'),
+                    opacity=0.3,
+                    visible='legendonly'  # Sembunyikan secara default
+                ))
+
+                # Highlight khusus untuk bulan Desember tahun target
+                target_date = pd.to_datetime(f"{target_year}-12-01")
+                if target_date in future_df.index:
                     fig.add_trace(go.Scatter(
-                        x=future_yearly.index, 
-                        y=future_yearly["Produksi"],
-                        mode='lines+markers',
-                        name='Prediksi (Rata-rata Tahunan)',
-                        line=dict(color='#FF5252', width=2),
-                        marker=dict(size=8, symbol='diamond')
+                        x=[target_date],
+                        y=[future_df.loc[target_date, "Produksi"]],
+                        mode='markers',
+                        name=f'Prediksi Des {target_year}',
+                        marker=dict(
+                            color='#FF5252',
+                            size=12,
+                            symbol='star',
+                            line=dict(color='#FF5252', width=2)
+                        )
                     ))
-
-                    # Data prediksi (bulanan, optional)
-                    fig.add_trace(go.Scatter(
-                        x=future_df.index, 
-                        y=future_df["Produksi"],
-                        mode='lines',
-                        name='Prediksi (Bulanan)',
-                        line=dict(color='#FF5252', width=1, dash='dot'),
-                        opacity=0.3,
-                        visible='legendonly'  # Sembunyikan secara default
-                    ))
-
-                    # Highlight khusus untuk bulan Desember tahun target
-                    target_date = pd.to_datetime(f"{target_year}-12-01")
-                    if target_date in future_df.index:
-                        fig.add_trace(go.Scatter(
-                            x=[target_date],
-                            y=[future_df.loc[target_date, "Produksi"]],
-                            mode='markers',
-                            name=f'Prediksi Des {target_year}',
-                            marker=dict(
-                                color='#FF5252',
-                                size=12,
-                                symbol='star',
-                                line=dict(color='#FF5252', width=2)
-                            )
-                        ))
 
                 # Garis vertikal pemisah dengan perbaikan
                 # Gunakan pendekatan alternatif untuk menghindari error tanggal
