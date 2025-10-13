@@ -793,14 +793,6 @@ try:
                             }
                         ))
                         
-                        # Tambahkan label persentase di posisi atas
-                        gauge_fig.add_annotation(
-                            x=0.5, y=0.55,
-                            text=f"{max(0, display_value):.1f}%",
-                            font={'size': 26, 'color': gauge_color, 'family': 'Arial, sans-serif', 'weight': 'bold'},
-                            showarrow=False
-                        )
-                        
                         # Tambahkan teks keterangan nilai numerik (tanpa T BTU)
                         reserve_text = f"{abs(remaining_reserves):,.0f}"
                         if remaining_reserves < 0:
@@ -808,6 +800,14 @@ try:
                             text_color = "red"
                         else:
                             text_color = "#808080"  # Abu-abu
+                        
+                        # Tambahkan label persentase di posisi yang lebih dekat dengan nilai
+                        gauge_fig.add_annotation(
+                            x=0.5, y=0.55,  # Lebih dekat dengan nilai (0.55 vs 0.65 sebelumnya)
+                            text=f"{max(0, display_value):.1f}%",
+                            font={'size': 26, 'color': gauge_color, 'family': 'Arial, sans-serif', 'weight': 'bold'},
+                            showarrow=False
+                        )
                         
                         # Tambahkan label nilai di posisi bawah
                         gauge_fig.add_annotation(
