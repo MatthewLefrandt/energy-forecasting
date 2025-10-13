@@ -573,6 +573,7 @@ try:
                 st.warning(f"Tidak ada hasil prediksi untuk Desember {target_year}.")
 
         # Visualisasi
+        # Visualisasi
         with col1:
             st.markdown("### Visualisasi Prediksi")
 
@@ -683,7 +684,22 @@ try:
                     xanchor="right",
                     x=1
                 ),
-                plot_bgcolor='rgba(0,0,0,0)'  # Background transparan
+                plot_bgcolor='rgba(0,0,0,0)',  # Background transparan
+                # Tambahkan konfigurasi warna teks dan grid horizontal
+                xaxis=dict(
+                    showgrid=False,
+                    gridcolor='rgba(0,0,0,0)',
+                    tickfont=dict(color='white'),
+                    title_font=dict(color='white')
+                ),
+                yaxis=dict(
+                    showgrid=False,
+                    gridcolor='rgba(0,0,0,0)',
+                    tickfont=dict(color='white'),
+                    title_font=dict(color='white')
+                ),
+                font=dict(color='white'),
+                title_font=dict(color='white')
             )
 
             st.plotly_chart(fig, use_container_width=True)
@@ -730,14 +746,9 @@ try:
                         domain={'x': [0, 1], 'y': [0, 1]},
                         title={
                             'text': f"<b>Cadangan {energy_type} Tersisa</b>", 
-                            'font': {'size': 24, 'family': 'Arial, sans-serif'}
+                            'font': {'size': 24, 'family': 'Arial, sans-serif', 'color': 'white'}  # Ubah ke putih
                         },
-                        delta={
-                            'reference': 100, 
-                            'decreasing': {'color': "red"}, 
-                            'suffix': '%',
-                            'font': {'size': 16}
-                        },
+                        delta=delta_properties,
                         number={
                             'suffix': '%',
                             'font': {'size': 26, 'family': 'Arial, sans-serif', 'color': gauge_color}
@@ -747,7 +758,7 @@ try:
                                 'range': [0, 100], 
                                 'tickwidth': 1, 
                                 'tickcolor': "rgba(0,0,0,0)",  # Warna tick yang transparan
-                                'tickfont': {'size': 14},
+                                'tickfont': {'size': 14, 'color': 'white'},  # Ubah ke putih
                                 'showticklabels': True  # Tetap tampilkan label
                             },
                             'bar': {'color': gauge_color, 'thickness': 0.7},
@@ -773,7 +784,7 @@ try:
                         reserve_text = f"-{reserve_text} (Defisit)"
                         text_color = "red"
                     else:
-                        text_color = "black"
+                        text_color = "white"  # Ubah ke putih
 
                     gauge_fig.add_annotation(
                         x=0.5, y=0.3,
@@ -814,7 +825,7 @@ try:
                         margin=dict(l=20, r=20, t=60, b=20),
                         paper_bgcolor="rgba(0,0,0,0)",  # Paper background transparan
                         plot_bgcolor="rgba(0,0,0,0)",   # Plot background transparan
-                        font={'color': "darkblue", 'family': "Arial, sans-serif"},
+                        font={'color': "white", 'family': "Arial, sans-serif"},  # Ubah semua font ke putih
                         template="plotly_white",
                         hovermode="closest",
                         hoverlabel=dict(
@@ -863,4 +874,4 @@ except Exception as e:
 # --- FOOTER ---
 st.markdown('<div class="footer">', unsafe_allow_html=True)
 st.markdown('© 2023 Prediksi Produksi Energi | Dibuat dengan Streamlit', unsafe_allow_html=True)
-st.markdown('</div>', unsafe_allow_html=True)
+st.markdown('</div>', unsafe_allow_html=True
