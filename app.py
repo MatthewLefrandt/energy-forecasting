@@ -257,22 +257,24 @@ def calculate_remaining_reserves(energy_type, future_df, target_year):
     # Calculate remaining reserves as of end of 2023
     remaining_2023 = initial_reserves[energy_type] - produced_until_2023[energy_type]
 
-    # Get yearly production from the forecast
+    # Get yearly production from the forecast (only 2024 and beyond)
     if not future_df.empty:
-        yearly_production = future_df.resample('Y').sum()
+        # Filter only dates from 2024 onwards to avoid double counting
+        future_df_filtered = future_df[future_df.index.year >= 2024]
+        yearly_production = future_df_filtered.resample('Y').sum()
 
-        # Calculate cumulative production and remaining reserves for each year
+        # Initialize the series with the value at the end of 2023
+        remaining_reserves = pd.Series(index=yearly_production.index, dtype=float)
+
+        # Calculate cumulative future production and subtract from remaining_2023
         cumulative_production = yearly_production["Produksi"].cumsum()
-        remaining_reserves = pd.Series([remaining_2023] * len(yearly_production.index), index=yearly_production.index)
 
+        # For each year in the forecast, subtract that year's production from previous remaining
+        current_remaining = remaining_2023
         for year in yearly_production.index:
-            year_idx = yearly_production.index.get_loc(year)
-            if year_idx > 0:
-                # Subtract this year's production
-                remaining_reserves[year_idx] = remaining_reserves[year_idx-1] - yearly_production.loc[year, "Produksi"]
-            else:
-                # First year in forecast
-                remaining_reserves[year_idx] = remaining_2023 - yearly_production.loc[year, "Produksi"]
+            year_prod = yearly_production.loc[year, "Produksi"]
+            current_remaining = current_remaining - year_prod
+            remaining_reserves.loc[year] = current_remaining
 
         # Find depletion year (first negative value)
         depletion_years = remaining_reserves[remaining_reserves <= 0]
@@ -282,12 +284,16 @@ def calculate_remaining_reserves(energy_type, future_df, target_year):
         target_date = pd.to_datetime(f"{target_year}-12-31")
         reserves_at_target = None
 
+        # Find the closest year in our calculated reserves
+        closest_year = None
         for year in remaining_reserves.index:
             if year.year >= target_year:
-                reserves_at_target = remaining_reserves[yearly_production.index.get_loc(year)]
+                closest_year = year
                 break
 
-        if reserves_at_target is None and not remaining_reserves.empty:
+        if closest_year is not None:
+            reserves_at_target = remaining_reserves.loc[closest_year]
+        elif not remaining_reserves.empty:
             # If target year is beyond our projection, use the last calculated value
             # and subtract estimated yearly production for remaining years
             last_year = remaining_reserves.index[-1].year
@@ -295,10 +301,20 @@ def calculate_remaining_reserves(energy_type, future_df, target_year):
             yearly_avg_production = yearly_production["Produksi"].mean()
             years_diff = target_year - last_year
             reserves_at_target = last_reserves - (yearly_avg_production * years_diff)
+        else:
+            # If we don't have any future data, just return the 2023 value
+            reserves_at_target = remaining_2023
 
-        return remaining_reserves, depletion_year, reserves_at_target
+        # For visualization, add the 2023 value at the beginning
+        start_date = pd.to_datetime('2023-12-31')
+        full_index = pd.DatetimeIndex([start_date]).append(remaining_reserves.index)
+        full_reserves = pd.Series([remaining_2023], index=[start_date]).append(remaining_reserves)
 
-    return pd.Series([remaining_2023]), None, remaining_2023
+        return full_reserves, depletion_year, reserves_at_target
+
+    # If no future data, return just the 2023 value
+    start_date = pd.to_datetime('2023-12-31')
+    return pd.Series([remaining_2023], index=[start_date]), None, remaining_2023
 
 # --- ENERGY ICONS AND COLORS ---
 ENERGY_ICONS = {
