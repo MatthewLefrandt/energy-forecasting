@@ -806,13 +806,13 @@ try:
                         else:
                             text_color = "#808080"  # Abu-abu
                         
-                        gauge_fig.add_annotation(
-                            x=0.5, y=0.3,
-                            text=reserve_text,
-                            font={'size': 22, 'color': text_color, 'family': 'Arial, sans-serif', 'weight': 'bold'},
-                            showarrow=False,
-                            hovertext="Total cadangan yang tersisa (nilai absolut)"
-                        )
+                        # gauge_fig.add_annotation(
+                        #     x=0.5, y=0.3,
+                        #     text=reserve_text,
+                        #     font={'size': 22, 'color': text_color, 'family': 'Arial, sans-serif', 'weight': 'bold'},
+                        #     showarrow=False,
+                        #     hovertext="Total cadangan yang tersisa (nilai absolut)"
+                        # )
                         
                         # Hapus anotasi estimasi tahun habis di speedometer (sudah tidak ada dalam kode)
                         
