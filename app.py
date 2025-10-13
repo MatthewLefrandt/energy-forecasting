@@ -484,7 +484,23 @@ try:
                             y=1.02,
                             xanchor="right",
                             x=1
-                        )
+                        ),
+                        plot_bgcolor='rgba(0,0,0,0)',  # Background transparan
+                        # Tambahkan konfigurasi warna teks dan grid horizontal
+                        xaxis=dict(
+                            showgrid=False,
+                            gridcolor='rgba(0,0,0,0)',
+                            tickfont=dict(color='white'),
+                            title_font=dict(color='white')
+                        ),
+                        yaxis=dict(
+                            showgrid=False,
+                            gridcolor='rgba(0,0,0,0)',
+                            tickfont=dict(color='white'),
+                            title_font=dict(color='white')
+                        ),
+                        font=dict(color='white'),
+                        title_font=dict(color='white')
                     )
 
                     st.plotly_chart(fig, use_container_width=True)
@@ -557,11 +573,11 @@ try:
                                     # "normal" -> hijau jika positif
                                     # "inverse" -> merah jika negatif
                                     delta_color = "normal" if percentage_remaining > 0 else "inverse"
-                                
+
                                     display_value = f"{abs(remaining_reserves):,.2f}"
                                     if remaining_reserves < 0:
                                         display_value = f"-{display_value}"
-                                
+
                                     st.metric(
                                         "Cadangan Tersisa", 
                                         display_value, 
@@ -572,7 +588,6 @@ try:
             except (KeyError, Exception) as e:
                 st.warning(f"Tidak ada hasil prediksi untuk Desember {target_year}.")
 
-        # Visualisasi
         # Visualisasi
         with col1:
             st.markdown("### Visualisasi Prediksi")
@@ -874,4 +889,4 @@ except Exception as e:
 # --- FOOTER ---
 st.markdown('<div class="footer">', unsafe_allow_html=True)
 st.markdown('© 2023 Prediksi Produksi Energi | Dibuat dengan Streamlit', unsafe_allow_html=True)
-st.markdown('</div>', unsafe_allow_html=True
+st.markdown('</div>', unsafe_allow_html=True)
