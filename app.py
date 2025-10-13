@@ -729,7 +729,12 @@ try:
                             'text': f"<b>Cadangan {energy_type} Tersisa</b>", 
                             'font': {'size': 24, 'family': 'Arial, sans-serif'}
                         },
-                        delta=delta_properties,
+                        delta={
+                            'reference': 100, 
+                            'decreasing': {'color': "red"}, 
+                            'suffix': '%',
+                            'font': {'size': 16}
+                        },
                         number={
                             'suffix': '%',
                             'font': {'size': 26, 'family': 'Arial, sans-serif', 'color': gauge_color}
@@ -740,7 +745,6 @@ try:
                                 'tickwidth': 1, 
                                 'tickcolor': "rgba(0,0,0,0)",  # Warna tick yang transparan
                                 'tickfont': {'size': 14},
-                                'showgrid': False,  # Matikan grid
                                 'showticklabels': True  # Tetap tampilkan label
                             },
                             'bar': {'color': gauge_color, 'thickness': 0.7},
@@ -815,8 +819,7 @@ try:
                             font_size=14,
                             font_family="Arial, sans-serif"
                         ),
-                        showlegend=False,
-                        grid=dict(rows=0, columns=0)  # Tanpa grid
+                        showlegend=False
                     )
 
                     # Tambahkan interaktivitas melalui tooltip kustom
