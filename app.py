@@ -66,6 +66,15 @@ SCALER_PATHS = {
     "Fuel Ethanol": "materials/scaler_fuel_ethanol.pkl"
 }
 
+# --- ENERGY RESERVES --- 
+ENERGY_RESERVES = {
+    "Batu Bara": 21_444_852.31,  # Dalam trilliun BTU
+    "Gas Alam": 7_172_147.19,  # Dalam trilliun BTU
+    "Minyak Bumi": 9_390_178.86,  # Dalam trilliun BTU
+    "Biodiesel": 0,  # Placeholder
+    "Fuel Ethanol": 0  # Placeholder
+}
+
 # --- LOAD DATA ---
 @st.cache_data
 def load_data(energy_type):
@@ -145,6 +154,90 @@ def forecast_production_biodiesel(year, model, scaler, data):
 
     future_df["Produksi"] = moving_average_smoothing(future_df["Produksi"], window=3)
     return future_df
+
+# --- RESERVE CALCULATION FUNCTION ---
+# --- RESERVE CALCULATION FUNCTION ---
+def calculate_remaining_reserves(energy_type, historical_df, future_df, target_year):
+    """
+    Menghitung cadangan energi yang tersisa dan estimasi tahun habisnya.
+
+    Args:
+        energy_type (str): Jenis energi yang dipilih
+        historical_df (DataFrame): Data historis produksi
+        future_df (DataFrame): Data prediksi produksi
+        target_year (int): Tahun prediksi target
+
+    Returns:
+        tuple: (cadangan_tersisa, estimasi_tahun_habis, persentase_tersisa)
+    """
+    if energy_type not in ENERGY_RESERVES or ENERGY_RESERVES[energy_type] == 0:
+        return None, None, None
+
+    # Ambil total cadangan awal
+    initial_reserves = ENERGY_RESERVES[energy_type]
+
+    # Hitung jumlah produksi historis
+    historical_consumption = historical_df["Produksi"].sum()
+
+    # Ambil data prediksi hingga tahun target
+    if energy_type == "Biodiesel":
+        # Untuk data tahunan (biodiesel)
+        future_consumption = future_df[future_df.index <= target_year]["Produksi"].sum()
+    else:
+        # Untuk data bulanan (energi lainnya)
+        target_date = pd.to_datetime(f"{target_year}-12-31")
+        future_consumption = future_df[future_df.index <= target_date]["Produksi"].sum()
+
+    # Hitung cadangan tersisa
+    remaining_reserves = initial_reserves - historical_consumption - future_consumption
+
+    # Jika cadangan tersisa negatif, berarti sudah habis sebelum tahun target
+    if remaining_reserves <= 0:
+        # Cari tahun di mana cadangan habis
+        cumulative_consumption = historical_consumption
+
+        if energy_type == "Biodiesel":
+            # Untuk data tahunan (biodiesel)
+            for year, row in future_df.iterrows():
+                cumulative_consumption += row["Produksi"]
+                if cumulative_consumption >= initial_reserves:
+                    # Interpolasi untuk mendapatkan fraksi tahun
+                    prev_consumption = cumulative_consumption - row["Produksi"]
+                    fraction = (initial_reserves - prev_consumption) / row["Produksi"]
+                    estimated_year = year - 1 + fraction
+                    return 0, estimated_year, 0
+        else:
+            # Untuk data bulanan
+            for date, row in future_df.iterrows():
+                cumulative_consumption += row["Produksi"]
+                if cumulative_consumption >= initial_reserves:
+                    # Interpolasi untuk mendapatkan fraksi bulan
+                    prev_consumption = cumulative_consumption - row["Produksi"]
+                    fraction = (initial_reserves - prev_consumption) / row["Produksi"]
+                    # Ambil bulan sebelumnya dan tambahkan fraksi
+                    prev_date = date - pd.DateOffset(months=1)
+                    estimated_year = prev_date.year + (prev_date.month - 1 + fraction) / 12
+                    return 0, estimated_year, 0
+
+    # Jika cadangan masih tersisa, prediksi tahun habisnya
+    if energy_type == "Biodiesel":
+        # Untuk data tahunan, gunakan rata-rata konsumsi tahunan terakhir
+        last_years = 5  # Gunakan 5 tahun terakhir untuk rata-rata
+        annual_consumption = future_df["Produksi"].iloc[-last_years:].mean() if len(future_df) >= last_years else future_df["Produksi"].mean()
+        years_remaining = remaining_reserves / annual_consumption if annual_consumption > 0 else float('inf')
+        estimated_year_depleted = target_year + years_remaining
+    else:
+        # Untuk data bulanan, konversi ke konsumsi tahunan
+        last_months = 12  # Gunakan 12 bulan terakhir untuk rata-rata
+        monthly_consumption = future_df["Produksi"].iloc[-last_months:].mean() if len(future_df) >= last_months else future_df["Produksi"].mean()
+        annual_consumption = monthly_consumption * 12
+        years_remaining = remaining_reserves / annual_consumption if annual_consumption > 0 else float('inf')
+        estimated_year_depleted = target_year + years_remaining
+
+    # Hitung persentase cadangan tersisa
+    percentage_remaining = (remaining_reserves / initial_reserves) * 100
+
+    return remaining_reserves, estimated_year_depleted, percentage_remaining
 
 # --- ENERGY ICONS AND COLORS ---
 ENERGY_ICONS = {
@@ -379,6 +472,40 @@ try:
                                 f"Dari {last_date.strftime('%b %Y')} ke Des {target_year}",
                                 delta_color="normal" if growth >= 0 else "inverse"
                             )
+
+                        # Tambahkan metrik estimasi cadangan untuk batu bara, gas alam, dan minyak bumi
+                        if energy_type in ["Batu Bara", "Gas Alam", "Minyak Bumi"]:
+                            st.markdown("### Estimasi Cadangan")
+
+                            # Hitung cadangan tersisa
+                            remaining_reserves, depletion_year, percentage_remaining = calculate_remaining_reserves(
+                                energy_type, df, future_df, target_year
+                            )
+
+                            if remaining_reserves is not None:
+                                metrics_col1, metrics_col2 = st.columns(2)
+                                with metrics_col1:
+                                    st.metric(
+                                        "Cadangan Tersisa", 
+                                        f"{remaining_reserves:,.2f} T BTU", 
+                                        f"{percentage_remaining:.1f}% dari total"
+                                    )
+
+                                with metrics_col2:
+                                    if np.isinf(depletion_year):
+                                        st.metric(
+                                            "Estimasi Habis Pada", 
+                                            "Tidak terbatas",
+                                            "Laju produksi sangat rendah"
+                                        )
+                                    else:
+                                        years_until_depletion = depletion_year - datetime.now().year
+                                        st.metric(
+                                            "Estimasi Habis Pada", 
+                                            f"Tahun {depletion_year:.1f}",
+                                            f"≈ {years_until_depletion:.1f} tahun lagi",
+                                            delta_color="inverse"  # Merah untuk nilai negatif (semakin sedikit waktu tersisa)
+                                        )
             except (KeyError, Exception) as e:
                 st.warning(f"Tidak ada hasil prediksi untuk Desember {target_year}.")
 
@@ -454,6 +581,37 @@ try:
                         )
                     ))
 
+                # Visualisasi cadangan tersisa untuk energi fosil (Batu Bara, Gas Alam, Minyak Bumi)
+                if energy_type in ["Batu Bara", "Gas Alam", "Minyak Bumi"]:
+                    # Hitung cadangan tersisa
+                    remaining_reserves, depletion_year, percentage_remaining = calculate_remaining_reserves(
+                        energy_type, df, future_df, target_year
+                    )
+
+                    if remaining_reserves is not None and not np.isinf(depletion_year):
+                        # Tambahkan garis vertikal untuk tahun habis cadangan
+                        depletion_date = pd.to_datetime(f"{int(depletion_year)}-01-01")
+
+                        fig.add_vline(
+                            x=depletion_date, 
+                            line_width=2, 
+                            line_dash="dash", 
+                            line_color="red"
+                        )
+
+                        # Tambahkan anotasi untuk tahun habis
+                        fig.add_annotation(
+                            x=depletion_date,
+                            y=yearly_df["Produksi"].max() * 0.8,
+                            text=f"Estimasi Habis ({depletion_year:.1f})",
+                            showarrow=True,
+                            arrowhead=1,
+                            arrowcolor="red",
+                            ax=-40,
+                            ay=-40,
+                            font=dict(color="red", size=12)
+                        )
+
             # Garis vertikal pemisah dengan perbaikan
             # Gunakan pendekatan alternatif untuk menghindari error tanggal
             last_year = df.index.year.max()
@@ -496,6 +654,49 @@ try:
             )
 
             st.plotly_chart(fig, use_container_width=True)
+
+            # Tampilkan visualisasi cadangan tersisa jika energi fosil
+            if energy_type in ["Batu Bara", "Gas Alam", "Minyak Bumi"]:
+                # Hitung cadangan tersisa
+                remaining_reserves, depletion_year, percentage_remaining = calculate_remaining_reserves(
+                    energy_type, df, future_df, target_year
+                )
+
+                if remaining_reserves is not None:
+                    st.markdown("### Visualisasi Cadangan Tersisa")
+
+                    # Visualisasi cadangan
+                    reserve_fig = go.Figure()
+
+                    # Tambahkan pie chart atau gauge chart untuk cadangan tersisa
+                    reserve_fig.add_trace(go.Pie(
+                        labels=["Terpakai", "Tersisa"],
+                        values=[100-percentage_remaining, percentage_remaining],
+                        hole=0.7,
+                        marker=dict(
+                            colors=[
+                                "#FF5252",  # Merah untuk terpakai
+                                ENERGY_COLORS.get(energy_type, '#1E88E5')  # Warna energi untuk tersisa
+                            ]
+                        ),
+                        textinfo='label+percent',
+                        hoverinfo='label+value+percent'
+                    ))
+
+                    # Layout untuk chart cadangan
+                    reserve_fig.update_layout(
+                        title=f"Cadangan {energy_type} ({percentage_remaining:.1f}% Tersisa)",
+                        annotations=[dict(
+                            text=f"{remaining_reserves:,.0f}<br>T BTU",
+                            x=0.5, y=0.5,
+                            font_size=14,
+                            showarrow=False
+                        )],
+                        height=350,
+                        showlegend=False
+                    )
+
+                    st.plotly_chart(reserve_fig, use_container_width=True)
 
             # Tambah tabel ringkasan (opsional, bisa dihide secara default)
             with st.expander("Tabel Data Prediksi", expanded=False):
