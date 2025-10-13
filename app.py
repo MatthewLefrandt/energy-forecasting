@@ -776,7 +776,12 @@ try:
                                     'tickfont': {'size': 14, 'color': '#808080'},  # Abu-abu
                                     'showticklabels': True  # Tetap tampilkan label
                                 },
-                                'bar': {'color': gauge_color, 'thickness': 0.7},
+                                'bar': {
+                                    # Gunakan warna hijau cerah untuk bar progres
+                                    'color': '#4CAF50' if percentage_remaining > 20 else (
+                                             '#FFA000' if percentage_remaining > 0 else 'red'), 
+                                    'thickness': 0.7
+                                },
                                 'bgcolor': 'rgba(255, 255, 255, 0)',  # Sepenuhnya transparan
                                 'borderwidth': 0,  # Tanpa border
                                 'bordercolor': "rgba(0,0,0,0)",  # Transparan
@@ -801,9 +806,13 @@ try:
                         else:
                             text_color = "#808080"  # Abu-abu
                         
+                        # Gunakan warna hijau cerah juga untuk label persentase
+                        gauge_color = '#4CAF50' if percentage_remaining > 20 else (
+                                      '#FFA000' if percentage_remaining > 0 else 'red')
+                        
                         # Tampilkan label persentase
                         gauge_fig.add_annotation(
-                            x=0.5, y=0.43,  # Posisi label persentase
+                            x=0.5, y=0.50,  # Posisi label persentase
                             text=f"{max(0, display_value):.1f}%",
                             font={'size': 26, 'color': gauge_color, 'family': 'Arial, sans-serif', 'weight': 'bold'},
                             showarrow=False,
@@ -812,7 +821,7 @@ try:
                         
                         # Tampilkan label nilai numerik dengan jarak yang sesuai
                         gauge_fig.add_annotation(
-                            x=0.5, y=0.40,  # Jarak yang sedikit lebih jauh dari persentase
+                            x=0.5, y=0.44,  # Jarak yang lebih dekat dengan persentase
                             text=reserve_text,
                             font={'size': 22, 'color': text_color, 'family': 'Arial, sans-serif', 'weight': 'bold'},
                             showarrow=False,
