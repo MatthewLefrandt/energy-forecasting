@@ -812,7 +812,7 @@ try:
                         
                         # Tampilkan label persentase
                         gauge_fig.add_annotation(
-                            x=0.5, y=0.50,  # Posisi label persentase
+                            x=0.5, y=0.43,  # Posisi label persentase
                             text=f"{max(0, display_value):.1f}%",
                             font={'size': 26, 'color': gauge_color, 'family': 'Arial, sans-serif', 'weight': 'bold'},
                             showarrow=False,
@@ -821,7 +821,7 @@ try:
                         
                         # Tampilkan label nilai numerik dengan jarak yang sesuai
                         gauge_fig.add_annotation(
-                            x=0.5, y=0.44,  # Jarak yang lebih dekat dengan persentase
+                            x=0.5, y=0.40,  # Jarak yang lebih dekat dengan persentase
                             text=reserve_text,
                             font={'size': 22, 'color': text_color, 'family': 'Arial, sans-serif', 'weight': 'bold'},
                             showarrow=False,
