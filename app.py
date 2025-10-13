@@ -305,10 +305,10 @@ def calculate_remaining_reserves(energy_type, future_df, target_year):
             # If we don't have any future data, just return the 2023 value
             reserves_at_target = remaining_2023
 
-        # For visualization, add the 2023 value at the beginning
+        # For visualization, add the 2023 value at the beginning using concat
         start_date = pd.to_datetime('2023-12-31')
-        full_index = pd.DatetimeIndex([start_date]).append(remaining_reserves.index)
-        full_reserves = pd.Series([remaining_2023], index=[start_date]).append(remaining_reserves)
+        start_series = pd.Series([remaining_2023], index=[start_date])
+        full_reserves = pd.concat([start_series, remaining_reserves])
 
         return full_reserves, depletion_year, reserves_at_target
 
