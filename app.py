@@ -801,17 +801,18 @@ try:
                         else:
                             text_color = "#808080"  # Abu-abu
                         
-                        # Tambahkan label persentase di posisi yang lebih dekat dengan nilai
+                        # Posisikan kedua label sangat berdekatan
+                        # Label persentase (sedikit di atas)
                         gauge_fig.add_annotation(
-                            x=0.5, y=0.55,  # Lebih dekat dengan nilai (0.55 vs 0.65 sebelumnya)
+                            x=0.5, y=0.52,  # Posisi sangat dekat dengan label nilai
                             text=f"{max(0, display_value):.1f}%",
                             font={'size': 26, 'color': gauge_color, 'family': 'Arial, sans-serif', 'weight': 'bold'},
                             showarrow=False
                         )
                         
-                        # Tambahkan label nilai di posisi bawah
+                        # Label nilai numerik (sedikit di bawah)
                         gauge_fig.add_annotation(
-                            x=0.5, y=0.45,
+                            x=0.5, y=0.48,  # Posisi sangat dekat dengan label persentase
                             text=reserve_text,
                             font={'size': 22, 'color': text_color, 'family': 'Arial, sans-serif', 'weight': 'bold'},
                             showarrow=False
