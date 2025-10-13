@@ -554,6 +554,8 @@ try:
                                 # Bagian metrik cadangan tersisa
                                 with metrics_col1:
                                     # Warna metrik berdasarkan sisa cadangan
+                                    # "normal" -> hijau jika positif
+                                    # "inverse" -> merah jika negatif
                                     delta_color = "normal" if percentage_remaining > 0 else "inverse"
                                 
                                     display_value = f"{abs(remaining_reserves):,.2f}"
