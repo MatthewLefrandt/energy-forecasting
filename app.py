@@ -16,6 +16,22 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# --- RESERVE DATA ---
+RESERVE_DATA = {
+    "Batu Bara": {
+        "total_reserve": 21_444_852.31,  # Triliun BTU
+        "total_produced_2023": 5_308_167.64  # Triliun BTU
+    },
+    "Gas Alam": {
+        "total_reserve": 7_172_147.19,  # Triliun BTU
+        "total_produced_2023": 4_358_683.78  # Triliun BTU
+    },
+    "Minyak Bumi": {
+        "total_reserve": 9_390_178.86,  # Triliun BTU
+        "total_produced_2023": 7_192_856.88  # Triliun BTU
+    }
+}
+
 # --- WELCOME POPUP USING SESSION STATE ---
 if 'popup_shown' not in st.session_state:
     st.session_state.popup_shown = False
@@ -115,6 +131,30 @@ st.markdown("""
             box-shadow: 0 0 0 0 rgba(30, 136, 229, 0);
         }
     }
+    .reserve-container {
+        text-align: center;
+        margin-top: 20px;
+        padding: 15px;
+        border-radius: 10px;
+        background: rgba(248, 249, 250, 0.8);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    .reserve-value {
+        font-size: 2.5rem;
+        font-weight: bold;
+        margin: 10px 0;
+    }
+    .reserve-label {
+        font-size: 1rem;
+        color: #757575;
+    }
+    .depletion-info {
+        font-size: 1.2rem;
+        font-weight: bold;
+        margin-top: 15px;
+        padding: 8px;
+        border-radius: 5px;
+    }
     .footer {
         margin-top: 3rem;
         padding-top: 1rem;
@@ -145,6 +185,75 @@ SCALER_PATHS = {
     "Biodiesel": "materials/scaler_biodiesel.pkl",
     "Fuel Ethanol": "materials/scaler_fuel_ethanol.pkl"
 }
+
+# --- RESERVE CALCULATION FUNCTION ---
+def calculate_reserves(energy_type, future_df, target_year):
+    """Calculate remaining reserves for a given energy type up to target year."""
+
+    if energy_type not in RESERVE_DATA:
+        return None, None, None
+
+    total_reserve = RESERVE_DATA[energy_type]["total_reserve"]
+    total_produced_2023 = RESERVE_DATA[energy_type]["total_produced_2023"]
+
+    # Initial remaining reserve at end of 2023
+    remaining_reserve_2023 = total_reserve - total_produced_2023
+
+    # For yearly data visualization, aggregate monthly predictions to yearly sums
+    if not future_df.empty and isinstance(future_df.index, pd.DatetimeIndex):
+        yearly_future = future_df.resample('Y').sum().reset_index()
+        yearly_future["year"] = yearly_future["Tahun"].dt.year
+        yearly_future = yearly_future.set_index("year")
+    else:
+        yearly_future = future_df.copy() if not future_df.empty else pd.DataFrame()
+
+    # Create a range of years to analyze
+    start_year = 2024
+    end_year = max(target_year, 2100)  # Extend to at least 2100 to find depletion year
+
+    # Initialize dictionary to track reserves over time
+    reserves_by_year = {2023: remaining_reserve_2023}
+
+    # Initial values
+    current_reserve = remaining_reserve_2023
+    depletion_year = None
+
+    # Calculate reserves for each future year
+    for year in range(start_year, end_year + 1):
+        if year in yearly_future.index:
+            yearly_production = yearly_future.loc[year, "Produksi"]
+            if isinstance(yearly_production, pd.Series):
+                yearly_production = yearly_production.iloc[0]
+        else:
+            # If we don't have a prediction, use the last available year's production
+            # and apply a simple growth rate (you can adjust this assumption)
+            if not yearly_future.empty:
+                last_year_prod = yearly_future["Produksi"].iloc[-1]
+                if isinstance(last_year_prod, pd.Series):
+                    last_year_prod = last_year_prod.iloc[0]
+                yearly_production = last_year_prod * 1.01  # Assuming 1% annual growth
+            else:
+                # Fallback if no predictions available
+                yearly_production = 0
+
+        # Update reserves
+        current_reserve -= yearly_production
+        reserves_by_year[year] = current_reserve
+
+        # Check for depletion
+        if depletion_year is None and current_reserve <= 0:
+            depletion_year = year
+
+    # Create dataframe from the reserves data
+    reserves_df = pd.DataFrame({
+        'Year': list(reserves_by_year.keys()),
+        'Remaining_Reserve': list(reserves_by_year.values())
+    })
+
+    # Get remaining reserve at target year
+    target_reserve = reserves_by_year.get(target_year, 0)
+
+    return reserves_df, target_reserve, depletion_year
 
 # --- LOAD DATA ---
 @st.cache_data
@@ -234,139 +343,6 @@ def forecast_production_biodiesel(year, model, scaler, data):
     future_df["Produksi"] = moving_average_smoothing(future_df["Produksi"], window=3)
     return future_df
 
-# --- CALCULATE REMAINING RESERVES FUNCTION ---
-def calculate_remaining_reserves(energy_type, future_df, target_year):
-    """Calculate remaining reserves based on current and future production."""
-
-    # Initial reserves and production data
-    initial_reserves = {
-        "Batu Bara": 21_444_852.31,
-        "Gas Alam": 7_172_147.19,
-        "Minyak Bumi": 9_390_178.86
-    }
-
-    produced_until_2023 = {
-        "Batu Bara": 5_308_167.64,
-        "Gas Alam": 4_358_683.78,
-        "Minyak Bumi": 7_192_856.88
-    }
-
-    # MAPE values for confidence intervals
-    mape_values = {
-        "Batu Bara": 0.0104,  # 1.04%
-        "Gas Alam": 0.0086,   # 0.86%
-        "Minyak Bumi": 0.0119  # 1.19%
-    }
-
-    if energy_type not in initial_reserves:
-        return None, None, None  # Return None for non-fossil fuels
-
-    # Calculate remaining reserves as of end of 2023
-    remaining_2023 = initial_reserves[energy_type] - produced_until_2023[energy_type]
-
-    # Get yearly production from the forecast
-    if not future_df.empty:
-        # Extract yearly data for fossil fuels
-        yearly_data = []
-
-        if energy_type != "Biodiesel":  # For monthly data models
-            # For monthly data, we want to use December values for yearly totals
-            # First convert the index to strings if they're datetime
-            future_df_copy = future_df.copy()
-            if isinstance(future_df_copy.index, pd.DatetimeIndex):
-                future_df_copy['Year'] = future_df_copy.index.year
-                future_df_copy['Month'] = future_df_copy.index.month
-
-                # Filter December months only
-                december_data = future_df_copy[future_df_copy['Month'] == 12]
-
-                # For each year, get the December production
-                for year, group in december_data.groupby('Year'):
-                    if year >= 2024:  # Only consider years from 2024 onwards
-                        yearly_data.append({
-                            'Tahun': year,
-                            'Prediksi_Produksi': group['Produksi'].values[0]
-                        })
-            else:
-                # If index is not datetime, use the resampled approach
-                yearly_totals = future_df.resample('Y').sum()
-                for idx, row in yearly_totals.iterrows():
-                    year = idx.year
-                    if year >= 2024:
-                        yearly_data.append({
-                            'Tahun': year,
-                            'Prediksi_Produksi': row['Produksi']
-                        })
-        else:  # For yearly data models
-            # Already yearly, just extract data
-            for idx, row in future_df.iterrows():
-                year = idx if isinstance(idx, int) else idx.year
-                if year >= 2024:
-                    yearly_data.append({
-                        'Tahun': year,
-                        'Prediksi_Produksi': row['Produksi']
-                    })
-
-        # Convert to DataFrame for easier handling
-        yearly_df = pd.DataFrame(yearly_data)
-
-        # Add confidence intervals based on MAPE
-        if energy_type in mape_values and not yearly_df.empty:
-            mape = mape_values[energy_type]
-            yearly_df['Prod_Lower'] = yearly_df['Prediksi_Produksi'] * (1 - mape)
-            yearly_df['Prod_Upper'] = yearly_df['Prediksi_Produksi'] * (1 + mape)
-
-        # Calculate reserves for baseline scenario
-        reserves_by_year = {2023: remaining_2023}
-        remaining = remaining_2023
-        depletion_year = None
-
-        for _, row in yearly_df.iterrows():
-            year = row['Tahun']
-            production = row['Prediksi_Produksi']
-
-            remaining -= production
-            reserves_by_year[year] = remaining
-
-            if remaining <= 0 and depletion_year is None:
-                depletion_year = year
-
-        # Calculate reserves at target year
-        if target_year in reserves_by_year:
-            reserves_at_target = reserves_by_year[target_year]
-        elif yearly_df.empty:
-            reserves_at_target = remaining_2023  # No forecast data
-        elif target_year < 2024:
-            reserves_at_target = remaining_2023  # Target is before forecast period
-        else:
-            # Target year is beyond our forecast
-            # Extrapolate using average production rate from last 5 years or fewer
-            if len(yearly_df) >= 5:
-                avg_production = yearly_df['Prediksi_Produksi'].tail(5).mean()
-            else:
-                avg_production = yearly_df['Prediksi_Produksi'].mean()
-
-            last_year = yearly_df['Tahun'].max()
-            last_remaining = reserves_by_year[last_year]
-            years_beyond = target_year - last_year
-
-            reserves_at_target = last_remaining - (years_beyond * avg_production)
-
-            # Check if depletion happens during extrapolation
-            if depletion_year is None and reserves_at_target <= 0:
-                # Estimate depletion year
-                years_until_depleted = last_remaining / avg_production
-                depletion_year = int(last_year + years_until_depleted)
-
-        # Convert reserves_by_year to Series for visualization
-        years = sorted(reserves_by_year.keys())
-        reserves_series = pd.Series([reserves_by_year[y] for y in years], index=years)
-
-        return reserves_series, depletion_year, reserves_at_target
-
-    # If no future data, return just the 2023 value
-    return pd.Series([remaining_2023], index=[2023]), None, remaining_2023
-    
 # --- ENERGY ICONS AND COLORS ---
 ENERGY_ICONS = {
     "Batu Bara": "🪨",
@@ -395,7 +371,7 @@ with st.sidebar:
     )
 
     min_year = 2025
-    max_year = 2100  
+    max_year = 2100  # Diubah dari 2050 menjadi 2100
     default_year = 2030
 
     target_year = st.slider(
@@ -615,6 +591,37 @@ try:
 
             st.markdown("</div>", unsafe_allow_html=True)
 
+            # Tambahkan visualisasi cadangan energi untuk energi fosil
+            if energy_type in ["Batu Bara", "Gas Alam", "Minyak Bumi"]:
+                # Hitung cadangan
+                reserves_df, target_reserve, depletion_year = calculate_reserves(energy_type, future_df, target_year)
+
+                if reserves_df is not None:
+                    st.markdown("### Status Cadangan Energi")
+
+                    # Format remaining reserves for display
+                    if target_reserve <= 0:
+                        reserve_color = "red"
+                        reserve_text = "HABIS 🚨"
+                        reserve_value = "0"
+                    else:
+                        reserve_color = "#1E88E5" if target_reserve > RESERVE_DATA[energy_type]["total_reserve"] * 0.3 else "#FFA726" if target_reserve > RESERVE_DATA[energy_type]["total_reserve"] * 0.1 else "red"
+                        reserve_text = "TERSISA"
+                        reserve_value = f"{target_reserve:,.2f} Trilliun BTU"
+
+                    # Display reserve status
+                    st.markdown(f"""
+                    <div class='reserve-container' style='border: 2px solid {reserve_color};'>
+                        <div class='reserve-label'>Status Cadangan {energy_type} di Tahun {target_year}</div>
+                        <div class='reserve-value' style='color: {reserve_color};'>{reserve_text}</div>
+                        <div style='font-size: 1.5rem; margin-bottom: 10px;'>{reserve_value}</div>
+
+                        <div class='depletion-info' style='background-color: {"rgba(255,82,82,0.1)" if depletion_year else "rgba(76,175,80,0.1)"}; color: {"#D32F2F" if depletion_year else "#2E7D32"};'>
+                            {f"Diperkirakan habis pada tahun {depletion_year}" if depletion_year and depletion_year <= 2100 else "Cadangan masih tersedia hingga setelah tahun 2100"}
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
         # Visualisasi
         with col1:
             st.markdown("### Visualisasi Prediksi")
@@ -739,179 +746,201 @@ try:
                 yearly_future = yearly_future[yearly_future["Tahun"] >= 2025]
                 st.dataframe(format_dataframe(yearly_future), use_container_width=True)
 
-        # Add reserves projection for fossil fuels
-        if energy_type in ["Batu Bara", "Gas Alam", "Minyak Bumi"]:
-            # Calculate reserves
-            remaining_reserves, depletion_year, reserves_at_target = calculate_remaining_reserves(
-                energy_type, future_df, target_year)
+            # Tambahkan visualisasi cadangan energi untuk energi fosil
+            if energy_type in ["Batu Bara", "Gas Alam", "Minyak Bumi"]:
+                reserves_df, target_reserve, depletion_year = calculate_reserves(energy_type, future_df, target_year)
 
-            if remaining_reserves is not None:
-                # Create an expander for the reserves visualization
-                with st.expander("Proyeksi Cadangan Energi", expanded=True):
-                    st.markdown(f"### Proyeksi Cadangan {energy_type}")
+                if reserves_df is not None:
+                    st.markdown("### Visualisasi Cadangan Energi")
 
-                    reserves_col1, reserves_col2 = st.columns([2, 1])
+                    # Visualisasi grafik cadangan
+                    fig_reserves = go.Figure()
 
-                    with reserves_col1:
-                        # Create a visualization of reserves over time
-                        fig_reserves = go.Figure()
+                    # Add trace for remaining reserves
+                    fig_reserves.add_trace(go.Scatter(
+                        x=reserves_df['Year'],
+                        y=reserves_df['Remaining_Reserve'],
+                        mode='lines',
+                        name='Cadangan Tersisa',
+                        line=dict(color=ENERGY_COLORS.get(energy_type, '#1E88E5'), width=3),
+                        fill='tozeroy'  # Fill area under the line
+                    ))
 
-                        # Convert index to years for cleaner display
-                        years_index = [date.year for date in remaining_reserves.index]
+                    # Add horizontal line at zero
+                    fig_reserves.add_shape(
+                        type="line",
+                        x0=min(reserves_df['Year']),
+                        y0=0,
+                        x1=max(reserves_df['Year']),
+                        y1=0,
+                        line=dict(color="red", width=2, dash="dash"),
+                    )
 
-                        # Add trace for remaining reserves
-                        fig_reserves.add_trace(go.Scatter(
-                            x=years_index,
-                            y=remaining_reserves.values,
-                            fill='tozeroy',
-                            mode='lines',
-                            name='Sisa Cadangan',
-                            line=dict(color=ENERGY_COLORS.get(energy_type, '#1E88E5'), width=2),
-                            fillcolor=f"rgba({','.join(map(str, [int(int(ENERGY_COLORS.get(energy_type, '#1E88E5')[1:3], 16)), int(ENERGY_COLORS.get(energy_type, '#1E88E5')[3:5], 16), int(ENERGY_COLORS.get(energy_type, '#1E88E5')[5:7], 16)]))},.3)"
-                        ))
-
-                        # Add depletion line if applicable
-                        if depletion_year:
-                            fig_reserves.add_vline(
-                                x=depletion_year, 
-                                line_width=2, 
-                                line_dash="dash", 
-                                line_color="red"
-                            )
-
-                            fig_reserves.add_annotation(
-                                x=depletion_year,
-                                y=remaining_reserves.max() * 0.9,
-                                text=f"Cadangan Habis ({depletion_year})",
-                                showarrow=True,
-                                arrowhead=1,
-                                ax=40,
-                                ay=-40,
-                                font=dict(color="red", size=14)
-                            )
-
-                        # Layout
-                        fig_reserves.update_layout(
-                            title=f"Proyeksi Cadangan {energy_type} Hingga Habis",
-                            xaxis_title="Tahun",
-                            yaxis_title="Sisa Cadangan (Trilliun BTU)",
-                            template="plotly_white",
-                            height=400,
-                            hovermode="x unified"
+                    # Add vertical line at depletion year if it exists
+                    if depletion_year:
+                        fig_reserves.add_vline(
+                            x=depletion_year,
+                            line_width=2,
+                            line_dash="dash",
+                            line_color="red",
                         )
 
-                        st.plotly_chart(fig_reserves, use_container_width=True)
-
-                    with reserves_col2:
-                        # Display cylinder visualization for remaining reserves
-                        percentage_remaining = 0
-                        initial_reserves = {
-                            "Batu Bara": 21_444_852.31,
-                            "Gas Alam": 7_172_147.19,
-                            "Minyak Bumi": 9_390_178.86
-                        }
-
-                        if reserves_at_target is not None:
-                            percentage_remaining = max(0, min(100, (reserves_at_target / initial_reserves[energy_type]) * 100))
-
-                        # Create cylinder chart
-                        fig_cylinder = go.Figure()
-
-                        # Draw cylinder 
-                        fig_cylinder.add_trace(go.Scatter(
-                            x=[0, 0, 1, 1, 0],
-                            y=[0, 1, 1, 0, 0],
-                            mode='lines',
-                            line=dict(color='black', width=2),
-                            showlegend=False
-                        ))
-
-                        # Fill cylinder based on remaining percentage
-                        y_fill = percentage_remaining / 100
-
-                        # For completely empty, still show a thin line
-                        if y_fill <= 0.01:
-                            y_fill = 0.01
-
-                        fig_cylinder.add_trace(go.Scatter(
-                            x=[0, 0, 1, 1, 0],
-                            y=[0, y_fill, y_fill, 0, 0],
-                            fill="toself",
-                            fillcolor=ENERGY_COLORS.get(energy_type, '#1E88E5'),
-                            line=dict(color=ENERGY_COLORS.get(energy_type, '#1E88E5')),
-                            showlegend=False
-                        ))
-
-                        # Add percentage text in the middle
-                        fig_cylinder.add_annotation(
-                            x=0.5,
-                            y=y_fill/2 if y_fill > 0.15 else y_fill + 0.15,
-                            text=f"{percentage_remaining:.1f}%",
-                            showarrow=False,
-                            font=dict(
-                                size=20,
-                                color='white' if y_fill > 0.15 else 'black'
-                            )
+                        # Add annotation for depletion year
+                        fig_reserves.add_annotation(
+                            x=depletion_year,
+                            y=0,
+                            text=f"Habis Tahun {depletion_year}",
+                            showarrow=True,
+                            arrowhead=1,
+                            ax=0,
+                            ay=-40,
+                            font=dict(color="red", size=14)
                         )
 
-                        # Layout
-                        fig_cylinder.update_layout(
-                            title=f"Sisa Cadangan<br>Tahun {target_year}",
-                            template="plotly_white",
-                            height=300,
-                            xaxis=dict(
-                                showticklabels=False,
-                                showgrid=False,
-                                zeroline=False,
-                                range=[-0.1, 1.1]
-                            ),
-                            yaxis=dict(
-                                showticklabels=False,
-                                showgrid=False,
-                                zeroline=False,
-                                range=[-0.1, 1.1]
-                            ),
-                            margin=dict(l=10, r=10, t=70, b=10),
-                            plot_bgcolor='rgba(0,0,0,0)'
-                        )
+                    # Add vertical line at target year
+                    fig_reserves.add_vline(
+                        x=target_year,
+                        line_width=2,
+                        line_dash="dash",
+                        line_color="#1E88E5",
+                    )
 
-                        st.plotly_chart(fig_cylinder, use_container_width=True)
+                    # Add annotation for target year
+                    target_reserve_value = reserves_df.loc[reserves_df['Year'] == target_year, 'Remaining_Reserve'].values[0]
+                    fig_reserves.add_annotation(
+                        x=target_year,
+                        y=target_reserve_value,
+                        text=f"Tahun {target_year}",
+                        showarrow=True,
+                        arrowhead=1,
+                        ax=0,
+                        ay=-40,
+                        font=dict(color="#1E88E5", size=14)
+                    )
 
-                        # Display numerical information
-                        if reserves_at_target is not None:
-                            reserves_status = "Tersedia" if reserves_at_target > 0 else "Habis"
-                            reserves_color = "green" if reserves_at_target > 0 else "red"
+                    # Update layout
+                    fig_reserves.update_layout(
+                        title=f"Proyeksi Cadangan {energy_type} (2023-{max(reserves_df['Year'])})",
+                        xaxis_title="Tahun",
+                        yaxis_title="Cadangan Tersisa (Trilliun BTU)",
+                        template="plotly_white",
+                        height=500,
+                        hovermode="x unified"
+                    )
 
-                            st.markdown(f"""
-                            <div style='text-align: center; margin-top: 10px;'>
-                                <div style='font-size: 16px; margin-bottom: 5px;'>Status Cadangan:</div>
-                                <div style='font-size: 24px; font-weight: bold; color: {reserves_color};'>{reserves_status}</div>
-                            </div>
-                            """, unsafe_allow_html=True)
+                    st.plotly_chart(fig_reserves, use_container_width=True)
 
-                            st.markdown(f"""
-                            <div style='text-align: center; margin-top: 15px;'>
-                                <div style='font-size: 16px; margin-bottom: 5px;'>Sisa Cadangan:</div>
-                                <div style='font-size: 24px; font-weight: bold;'>{reserves_at_target:,.2f} Trilliun BTU</div>
-                            </div>
-                            """, unsafe_allow_html=True)
+                    # Tambahkan visualisasi tabung cadangan energi
+                    st.markdown("### Visualisasi Tabung Cadangan")
 
-                            if depletion_year:
-                                years_until_empty = max(0, depletion_year - datetime.now().year)
-                                st.markdown(f"""
-                                <div style='text-align: center; margin-top: 15px;'>
-                                    <div style='font-size: 16px; margin-bottom: 5px;'>Habis Pada Tahun:</div>
-                                    <div style='font-size: 24px; font-weight: bold;'>{depletion_year}</div>
-                                    <div style='font-size: 14px; color: gray;'>({years_until_empty} tahun lagi)</div>
-                                </div>
-                                """, unsafe_allow_html=True)
+                    # Calculate initial and remaining capacity
+                    initial_reserve = RESERVE_DATA[energy_type]["total_reserve"] - RESERVE_DATA[energy_type]["total_produced_2023"]
+                    percent_remaining = (target_reserve / initial_reserve) * 100 if initial_reserve > 0 else 0
+                    percent_remaining = max(0, min(100, percent_remaining))
 
-                        # Add disclaimer
-                        st.markdown("""
-                        <div style='margin-top: 30px; padding: 10px; background-color: #f8f9fa; border-radius: 5px; font-size: 12px;'>
-                            <i>* Proyeksi berdasarkan data produksi saat ini dan asumsi tidak ada penemuan cadangan baru.</i>
-                        </div>
-                        """, unsafe_allow_html=True)
+                    # Set color based on remaining percentage
+                    if percent_remaining <= 0:
+                        gauge_color = "red"
+                        status_text = "HABIS"
+                    elif percent_remaining < 20:
+                        gauge_color = "red"
+                        status_text = "KRITIS"
+                    elif percent_remaining < 50:
+                        gauge_color = "orange"
+                        status_text = "MENIPIS"
+                    else:
+                        gauge_color = "green"
+                        status_text = "AMAN"
+
+                    # Create a gauge chart as a tank visualization
+                    fig_gauge = go.Figure(go.Indicator(
+                        mode="gauge+number+delta",
+                        value=percent_remaining,
+                        domain={'x': [0, 1], 'y': [0, 1]},
+                        title={'text': f"Cadangan {energy_type}<br><span style='font-size:0.8em;color:gray'>Tahun {target_year}</span>", 'font': {'size': 18}},
+                        gauge={
+                            'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "darkblue"},
+                            'bar': {'color': gauge_color},
+                            'bgcolor': "white",
+                            'borderwidth': 2,
+                            'bordercolor': "gray",
+                            'steps': [
+                                {'range': [0, 20], 'color': 'rgba(255, 0, 0, 0.3)'},
+                                {'range': [20, 50], 'color': 'rgba(255, 165, 0, 0.3)'},
+                                {'range': [50, 100], 'color': 'rgba(0, 128, 0, 0.3)'}
+                            ],
+                            'threshold': {
+                                'line': {'color': "red", 'width': 4},
+                                'thickness': 0.75,
+                                'value': 20
+                            }
+                        },
+                        number={'suffix': "%", 'font': {'size': 24}},
+                        delta={'reference': 100, 'increasing': {'color': "red"}, 'decreasing': {'color': "green"}}
+                    ))
+
+                    # Add text annotation for status
+                    fig_gauge.add_annotation(
+                        x=0.5,
+                        y=0.25,
+                        text=f"Status: {status_text}",
+                        font=dict(size=18, color=gauge_color),
+                        showarrow=False
+                    )
+
+                    # Add additional info below gauge
+                    if target_reserve <= 0:
+                        info_text = f"Cadangan habis pada tahun {depletion_year if depletion_year else '?'}"
+                    else:
+                        remaining_years = depletion_year - target_year if depletion_year else ">77"
+                        info_text = f"Perkiraan bertahan: {remaining_years} tahun lagi"
+
+                    fig_gauge.add_annotation(
+                        x=0.5,
+                        y=0.15,
+                        text=info_text,
+                        font=dict(size=14),
+                        showarrow=False
+                    )
+
+                    # Adjust layout
+                    fig_gauge.update_layout(
+                        height=400,
+                        margin=dict(l=20, r=20, t=60, b=20)
+                    )
+
+                    st.plotly_chart(fig_gauge, use_container_width=True)
+
+                    # Tambahkan tabel data cadangan
+                    with st.expander("Tabel Data Cadangan", expanded=False):
+                        # Extract relevant years for table display
+                        key_years = [2023]
+                        display_years = list(range(2025, target_year + 1, 5))
+                        if target_year not in display_years:
+                            display_years.append(target_year)
+                        if depletion_year and depletion_year not in display_years and depletion_year <= 2100:
+                            display_years.append(depletion_year)
+                        display_years = sorted(key_years + display_years)
+
+                        # Filter DataFrame for these years
+                        table_df = reserves_df[reserves_df['Year'].isin(display_years)].copy()
+                        table_df.columns = ['Tahun', 'Cadangan Tersisa (Trilliun BTU)']
+
+                        # Add status column
+                        def get_status(reserve):
+                            if reserve <= 0:
+                                return "HABIS 🚨"
+                            elif reserve < initial_reserve * 0.2:
+                                return "KRITIS ⚠️"
+                            elif reserve < initial_reserve * 0.5:
+                                return "MENIPIS ⚠️"
+                            else:
+                                return "AMAN ✅"
+
+                        table_df['Status'] = table_df['Cadangan Tersisa (Trilliun BTU)'].apply(get_status)
+
+                        # Display formatted table
+                        st.dataframe(format_dataframe(table_df), use_container_width=True)
 
 except FileNotFoundError:
     st.error(f"File model atau data tidak ditemukan untuk energi {energy_type}.")
