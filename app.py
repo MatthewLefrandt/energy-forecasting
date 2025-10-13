@@ -761,34 +761,33 @@ try:
 
                         # Buat speedometer chart dengan Plotly yang lebih menarik dan interaktif
                         gauge_fig = go.Figure(go.Indicator(
-                            mode="gauge+number+delta",
+                            mode="gauge+number",  # Hapus "+delta" untuk menghilangkan tampilan persentase tambahan
                             value=max(0, display_value),  # Pastikan tidak negatif untuk gauge
                             domain={'x': [0, 1], 'y': [0, 1]},
                             title={
                                 'text': f"<b>Cadangan {energy_type} Tersisa</b>", 
                                 'font': {'size': 24, 'family': 'Arial, sans-serif', 'color': '#808080'}  # Abu-abu
                             },
-                            delta=delta_properties,
                             number={
-                                'suffix': '%',
+                                'suffix': '%',  # Tetap menampilkan satu label persentase
                                 'font': {'size': 26, 'family': 'Arial, sans-serif', 'color': gauge_color}
                             },
                             gauge={
                                 'axis': {
                                     'range': [0, 100], 
                                     'tickwidth': 1, 
-                                    'tickcolor': "rgba(0,0,0,0)",  # Warna tick yang transparan
-                                    'tickfont': {'size': 14, 'color': '#808080'},  # Abu-abu
-                                    'showticklabels': True  # Tetap tampilkan label
+                                    'tickcolor': "rgba(0,0,0,0)",
+                                    'tickfont': {'size': 14, 'color': '#808080'},
+                                    'showticklabels': True
                                 },
                                 'bar': {'color': gauge_color, 'thickness': 0.7},
-                                'bgcolor': 'rgba(255, 255, 255, 0)',  # Sepenuhnya transparan
-                                'borderwidth': 0,  # Tanpa border
-                                'bordercolor': "rgba(0,0,0,0)",  # Transparan
+                                'bgcolor': 'rgba(255, 255, 255, 0)',
+                                'borderwidth': 0,
+                                'bordercolor': "rgba(0,0,0,0)",
                                 'steps': [
-                                    {'range': [0, 20], 'color': 'rgba(255, 99, 71, 0.25)'},  # Merah sangat transparan
-                                    {'range': [20, 50], 'color': 'rgba(255, 165, 0, 0.25)'},  # Oranye sangat transparan
-                                    {'range': [50, 100], 'color': 'rgba(144, 238, 144, 0.25)'}  # Hijau sangat transparan
+                                    {'range': [0, 20], 'color': 'rgba(255, 99, 71, 0.25)'},
+                                    {'range': [20, 50], 'color': 'rgba(255, 165, 0, 0.25)'},
+                                    {'range': [50, 100], 'color': 'rgba(144, 238, 144, 0.25)'}
                                 ],
                                 'threshold': {
                                     'line': {'color': "red", 'width': 3},
@@ -817,21 +816,21 @@ try:
                         # Hapus anotasi estimasi tahun habis di speedometer (sudah tidak ada dalam kode)
                         
                         # Tooltip juga disederhanakan, hapus teks tambahan
-                        # gauge_fig.add_trace(go.Scatter(
-                        #     x=[0.5],
-                        #     y=[0.5],
-                        #     mode="markers",
-                        #     marker=dict(
-                        #         size=1,
-                        #         color="rgba(0,0,0,0)"
-                        #     ),
-                        #     hoverinfo="text",
-                        #     hovertext=f"<b>Detail Cadangan {energy_type}</b><br>" +
-                        #             f"Total cadangan awal: {ENERGY_RESERVES[energy_type]:,.0f}<br>" +
-                        #             f"Cadangan tersisa: {reserve_text}<br>" +
-                        #             f"Persentase tersisa: {max(0, percentage_remaining):.1f}%",
-                        #     showlegend=False
-                        # ))
+                        gauge_fig.add_trace(go.Scatter(
+                            x=[0.5],
+                            y=[0.5],
+                            mode="markers",
+                            marker=dict(
+                                size=1,
+                                color="rgba(0,0,0,0)"
+                            ),
+                            hoverinfo="text",
+                            hovertext=f"<b>Detail Cadangan {energy_type}</b><br>" +
+                                    f"Total cadangan awal: {ENERGY_RESERVES[energy_type]:,.0f}<br>" +
+                                    f"Cadangan tersisa: {reserve_text}<br>" +
+                                    f"Persentase tersisa: {max(0, percentage_remaining):.1f}%",
+                            showlegend=False
+                        ))
 
                         # Tambahkan interaktivitas melalui tooltip kustom
                         gauge_fig.add_trace(go.Scatter(
