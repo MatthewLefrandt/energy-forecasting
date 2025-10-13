@@ -251,6 +251,13 @@ def calculate_remaining_reserves(energy_type, future_df, target_year):
         "Minyak Bumi": 7_192_856.88
     }
 
+    # MAPE values for confidence intervals
+    mape_values = {
+        "Batu Bara": 0.0104,  # 1.04%
+        "Gas Alam": 0.0086,   # 0.86%
+        "Minyak Bumi": 0.0119  # 1.19%
+    }
+
     if energy_type not in initial_reserves:
         return None, None, None  # Return None for non-fossil fuels
 
@@ -259,61 +266,101 @@ def calculate_remaining_reserves(energy_type, future_df, target_year):
 
     # Get yearly production from the forecast
     if not future_df.empty:
-        # Create a yearly production DataFrame from the forecasted data
+        # Extract yearly data for fossil fuels
+        yearly_data = []
+
         if energy_type != "Biodiesel":  # For monthly data models
-            # For monthly data, aggregate to get annual totals
-            yearly_production = future_df.resample('Y').sum()
-            # Extract year as integer for consistent processing
-            yearly_prod_dict = {}
-            for idx, row in yearly_production.iterrows():
-                yearly_prod_dict[idx.year] = row['Produksi']
+            # For monthly data, we want to use December values for yearly totals
+            # First convert the index to strings if they're datetime
+            future_df_copy = future_df.copy()
+            if isinstance(future_df_copy.index, pd.DatetimeIndex):
+                future_df_copy['Year'] = future_df_copy.index.year
+                future_df_copy['Month'] = future_df_copy.index.month
+
+                # Filter December months only
+                december_data = future_df_copy[future_df_copy['Month'] == 12]
+
+                # For each year, get the December production
+                for year, group in december_data.groupby('Year'):
+                    if year >= 2024:  # Only consider years from 2024 onwards
+                        yearly_data.append({
+                            'Tahun': year,
+                            'Prediksi_Produksi': group['Produksi'].values[0]
+                        })
+            else:
+                # If index is not datetime, use the resampled approach
+                yearly_totals = future_df.resample('Y').sum()
+                for idx, row in yearly_totals.iterrows():
+                    year = idx.year
+                    if year >= 2024:
+                        yearly_data.append({
+                            'Tahun': year,
+                            'Prediksi_Produksi': row['Produksi']
+                        })
         else:  # For yearly data models
-            # Already yearly, just convert to dict
-            yearly_prod_dict = {}
+            # Already yearly, just extract data
             for idx, row in future_df.iterrows():
-                # Handle both integer index and datetime
                 year = idx if isinstance(idx, int) else idx.year
-                yearly_prod_dict[year] = row['Produksi']
+                if year >= 2024:
+                    yearly_data.append({
+                        'Tahun': year,
+                        'Prediksi_Produksi': row['Produksi']
+                    })
 
-        # Initialize reserves calculation starting from remaining_2023
-        yearly_reserves = {2023: remaining_2023}
-        current_reserve = remaining_2023
+        # Convert to DataFrame for easier handling
+        yearly_df = pd.DataFrame(yearly_data)
 
-        # Calculate reserves for each forecasted year by subtracting that year's production
-        for year, production in sorted(yearly_prod_dict.items()):
-            if year >= 2024:  # Only process years from 2024 onwards
-                current_reserve -= production
-                yearly_reserves[year] = current_reserve
+        # Add confidence intervals based on MAPE
+        if energy_type in mape_values and not yearly_df.empty:
+            mape = mape_values[energy_type]
+            yearly_df['Prod_Lower'] = yearly_df['Prediksi_Produksi'] * (1 - mape)
+            yearly_df['Prod_Upper'] = yearly_df['Prediksi_Produksi'] * (1 + mape)
 
-        # Create a series with all calculated reserves
-        years = sorted(yearly_reserves.keys())
-        reserves_series = pd.Series([yearly_reserves[y] for y in years], index=years)
+        # Calculate reserves for baseline scenario
+        reserves_by_year = {2023: remaining_2023}
+        remaining = remaining_2023
+        depletion_year = None
 
-        # Find depletion year (first negative value)
-        negative_years = [y for y in years if yearly_reserves[y] <= 0]
-        depletion_year = None if not negative_years else negative_years[0]
+        for _, row in yearly_df.iterrows():
+            year = row['Tahun']
+            production = row['Prediksi_Produksi']
 
-        # Get reserves at target year
-        if target_year in yearly_reserves:
-            reserves_at_target = yearly_reserves[target_year]
-        elif target_year > max(years):
-            # If target year is beyond our calculation, estimate using average production rate
-            last_year = max(years)
-            last_reserve = yearly_reserves[last_year]
+            remaining -= production
+            reserves_by_year[year] = remaining
+
+            if remaining <= 0 and depletion_year is None:
+                depletion_year = year
+
+        # Calculate reserves at target year
+        if target_year in reserves_by_year:
+            reserves_at_target = reserves_by_year[target_year]
+        elif yearly_df.empty:
+            reserves_at_target = remaining_2023  # No forecast data
+        elif target_year < 2024:
+            reserves_at_target = remaining_2023  # Target is before forecast period
+        else:
+            # Target year is beyond our forecast
+            # Extrapolate using average production rate from last 5 years or fewer
+            if len(yearly_df) >= 5:
+                avg_production = yearly_df['Prediksi_Produksi'].tail(5).mean()
+            else:
+                avg_production = yearly_df['Prediksi_Produksi'].mean()
+
+            last_year = yearly_df['Tahun'].max()
+            last_remaining = reserves_by_year[last_year]
             years_beyond = target_year - last_year
 
-            # Calculate average yearly production from the last few years
-            recent_years = [y for y in sorted(yearly_prod_dict.keys()) if y >= 2024][-5:]  # Last 5 years or fewer
-            if len(recent_years) >= 2:
-                avg_yearly_production = sum(yearly_prod_dict[y] for y in recent_years) / len(recent_years)
-            else:
-                # If not enough data, use the only available year
-                avg_yearly_production = list(yearly_prod_dict.values())[-1]
+            reserves_at_target = last_remaining - (years_beyond * avg_production)
 
-            reserves_at_target = last_reserve - (avg_yearly_production * years_beyond)
-        else:
-            # Target year is before our first calculation (shouldn't happen)
-            reserves_at_target = remaining_2023
+            # Check if depletion happens during extrapolation
+            if depletion_year is None and reserves_at_target <= 0:
+                # Estimate depletion year
+                years_until_depleted = last_remaining / avg_production
+                depletion_year = int(last_year + years_until_depleted)
+
+        # Convert reserves_by_year to Series for visualization
+        years = sorted(reserves_by_year.keys())
+        reserves_series = pd.Series([reserves_by_year[y] for y in years], index=years)
 
         return reserves_series, depletion_year, reserves_at_target
 
