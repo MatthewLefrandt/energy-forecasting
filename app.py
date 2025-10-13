@@ -259,27 +259,29 @@ def calculate_remaining_reserves(energy_type, future_df, target_year):
 
     # Get yearly production from the forecast
     if not future_df.empty:
-        # Create a yearly production Series from the forecasted data
+        # Create a yearly production DataFrame from the forecasted data
         if energy_type != "Biodiesel":  # For monthly data models
             # For monthly data, aggregate to get annual totals
             yearly_production = future_df.resample('Y').sum()
+            # Extract year as integer for consistent processing
+            yearly_prod_dict = {}
+            for idx, row in yearly_production.iterrows():
+                yearly_prod_dict[idx.year] = row['Produksi']
         else:  # For yearly data models
-            # Already yearly, just use as is
-            yearly_production = future_df
+            # Already yearly, just convert to dict
+            yearly_prod_dict = {}
+            for idx, row in future_df.iterrows():
+                # Handle both integer index and datetime
+                year = idx if isinstance(idx, int) else idx.year
+                yearly_prod_dict[year] = row['Produksi']
 
         # Initialize reserves calculation starting from remaining_2023
-        yearly_reserves = {}
+        yearly_reserves = {2023: remaining_2023}
         current_reserve = remaining_2023
 
-        # Start with 2023 value for visualization
-        yearly_reserves[2023] = current_reserve
-
         # Calculate reserves for each forecasted year by subtracting that year's production
-        for idx, row in yearly_production.iterrows():
-            year = idx.year if hasattr(idx, 'year') else idx  # Handle both datetime and int indices
-
+        for year, production in sorted(yearly_prod_dict.items()):
             if year >= 2024:  # Only process years from 2024 onwards
-                production = row['Produksi']
                 current_reserve -= production
                 yearly_reserves[year] = current_reserve
 
@@ -301,14 +303,12 @@ def calculate_remaining_reserves(energy_type, future_df, target_year):
             years_beyond = target_year - last_year
 
             # Calculate average yearly production from the last few years
-            recent_years = [y for y in years if y >= 2024][-5:]  # Last 5 years or fewer
+            recent_years = [y for y in sorted(yearly_prod_dict.keys()) if y >= 2024][-5:]  # Last 5 years or fewer
             if len(recent_years) >= 2:
-                avg_yearly_production = sum(yearly_production.loc[str(y)]['Produksi'] 
-                                          if energy_type != "Biodiesel" else yearly_production.loc[y]['Produksi'] 
-                                          for y in recent_years) / len(recent_years)
+                avg_yearly_production = sum(yearly_prod_dict[y] for y in recent_years) / len(recent_years)
             else:
                 # If not enough data, use the only available year
-                avg_yearly_production = yearly_production.iloc[-1]['Produksi']
+                avg_yearly_production = list(yearly_prod_dict.values())[-1]
 
             reserves_at_target = last_reserve - (avg_yearly_production * years_beyond)
         else:
@@ -319,7 +319,7 @@ def calculate_remaining_reserves(energy_type, future_df, target_year):
 
     # If no future data, return just the 2023 value
     return pd.Series([remaining_2023], index=[2023]), None, remaining_2023
-
+    
 # --- ENERGY ICONS AND COLORS ---
 ENERGY_ICONS = {
     "Batu Bara": "🪨",
