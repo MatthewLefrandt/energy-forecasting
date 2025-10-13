@@ -156,7 +156,6 @@ def forecast_production_biodiesel(year, model, scaler, data):
     return future_df
 
 # --- RESERVE CALCULATION FUNCTION ---
-# --- RESERVE CALCULATION FUNCTION ---
 def calculate_remaining_reserves(energy_type, historical_df, future_df, target_year):
     """
     Menghitung cadangan energi yang tersisa dan estimasi tahun habisnya.
@@ -307,7 +306,6 @@ def calculate_remaining_reserves(energy_type, historical_df, future_df, target_y
         print(f"Error dalam calculate_remaining_reserves: {e}")
         return None, None, None
 
-# --- ENERGY ICONS AND COLORS ---
 # --- ENERGY ICONS AND COLORS ---
 ENERGY_ICONS = {
     "Batu Bara": "🪨",
@@ -542,7 +540,7 @@ try:
                                 delta_color="normal" if growth >= 0 else "inverse"
                             )
 
-                        # Tambahkan metrik estimasi cadangan untuk batu bara, gas alam, dan minyak bumi
+                        # Tambahkan metrik cadangan tersisa untuk batu bara, gas alam, dan minyak bumi
                         if energy_type in ["Batu Bara", "Gas Alam", "Minyak Bumi"]:
                             st.markdown("### Estimasi Cadangan")
 
@@ -558,32 +556,17 @@ try:
                                     color = "#FF5252" if remaining_reserves <= 0 else None
                                     delta_color = "inverse" if remaining_reserves <= 0 else "normal"
 
+                                    display_value = f"{abs(remaining_reserves):,.2f}"
+                                    if remaining_reserves < 0:
+                                        display_value = f"-{display_value}"
+
                                     st.metric(
                                         "Cadangan Tersisa", 
-                                        f"{abs(remaining_reserves):,.2f}", 
+                                        display_value, 
                                         f"{percentage_remaining:.1f}% dari total",
                                         delta_color=delta_color
                                     )
 
-                                with metrics_col2:
-                                    if np.isinf(depletion_year):
-                                        st.metric(
-                                            "Estimasi Habis Pada", 
-                                            "Tidak terbatas",
-                                            "Laju produksi sangat rendah"
-                                        )
-                                    else:
-                                        years_until_depletion = depletion_year - datetime.now().year
-                                        status_text = "tahun lagi"
-                                        if years_until_depletion < 0:
-                                            status_text = "tahun yang lalu"
-
-                                        st.metric(
-                                            "Estimasi Habis Pada", 
-                                            f"Tahun {depletion_year:.1f}",
-                                            f"≈ {abs(years_until_depletion):.1f} {status_text}",
-                                            delta_color="inverse"  # Merah untuk nilai negatif (semakin sedikit waktu tersisa)
-                                        )
             except (KeyError, Exception) as e:
                 st.warning(f"Tidak ada hasil prediksi untuk Desember {target_year}.")
 
@@ -726,14 +709,14 @@ try:
                         gauge_color = ENERGY_COLORS.get(energy_type, '#1E88E5')
                         display_value = percentage_remaining
 
-                    # Buat speedometer chart dengan Plotly yang lebih menarik
+                    # Buat speedometer chart dengan Plotly yang lebih menarik dan interaktif
                     gauge_fig = go.Figure(go.Indicator(
                         mode="gauge+number+delta",
                         value=max(0, display_value),  # Pastikan tidak negatif untuk gauge
                         domain={'x': [0, 1], 'y': [0, 1]},
                         title={
                             'text': f"<b>Cadangan {energy_type} Tersisa</b>", 
-                            'font': {'size': 26, 'family': 'Arial, sans-serif'}
+                            'font': {'size': 24, 'family': 'Arial, sans-serif'}
                         },
                         delta={
                             'reference': 100, 
@@ -743,7 +726,7 @@ try:
                         },
                         number={
                             'suffix': '%',
-                            'font': {'size': 24, 'family': 'Arial, sans-serif', 'color': gauge_color}
+                            'font': {'size': 26, 'family': 'Arial, sans-serif', 'color': gauge_color}
                         },
                         gauge={
                             'axis': {
@@ -752,18 +735,18 @@ try:
                                 'tickcolor': "darkblue",
                                 'tickfont': {'size': 14}
                             },
-                            'bar': {'color': gauge_color, 'thickness': 0.6},
-                            'bgcolor': "white",
-                            'borderwidth': 2,
-                            'bordercolor': "gray",
+                            'bar': {'color': gauge_color, 'thickness': 0.7},
+                            'bgcolor': 'rgba(255, 255, 255, 0.2)',  # Transparan
+                            'borderwidth': 1,
+                            'bordercolor': "#E0E0E0",
                             'steps': [
-                                {'range': [0, 20], 'color': 'rgba(255, 99, 71, 0.4)'},  # Merah transparan
-                                {'range': [20, 50], 'color': 'rgba(255, 165, 0, 0.4)'},  # Oranye transparan
-                                {'range': [50, 100], 'color': 'rgba(144, 238, 144, 0.4)'}  # Hijau transparan
+                                {'range': [0, 20], 'color': 'rgba(255, 99, 71, 0.25)'},  # Merah sangat transparan
+                                {'range': [20, 50], 'color': 'rgba(255, 165, 0, 0.25)'},  # Oranye sangat transparan
+                                {'range': [50, 100], 'color': 'rgba(144, 238, 144, 0.25)'}  # Hijau sangat transparan
                             ],
                             'threshold': {
-                                'line': {'color': "red", 'width': 4},
-                                'thickness': 0.75,
+                                'line': {'color': "red", 'width': 3},
+                                'thickness': 0.8,
                                 'value': 20
                             }
                         }
@@ -780,8 +763,9 @@ try:
                     gauge_fig.add_annotation(
                         x=0.5, y=0.3,
                         text=reserve_text,
-                        font={'size': 20, 'color': text_color, 'family': 'Arial, sans-serif', 'weight': 'bold'},
-                        showarrow=False
+                        font={'size': 22, 'color': text_color, 'family': 'Arial, sans-serif', 'weight': 'bold'},
+                        showarrow=False,
+                        hovertext="Total cadangan yang tersisa (nilai absolut)"
                     )
 
                     # Tambahkan teks estimasi tahun habis dengan tampilan yang lebih baik
@@ -799,32 +783,49 @@ try:
                             text_color = "orange"
                         else:
                             text_color = "green"
-                        depletion_text = f"Estimasi habis: {depletion_year:.1f} (≈ {years_until_depletion:.1f} tahun lagi)"
+                        depletion_text = f"Estimasi habis pada tahun {depletion_year:.1f}"
 
                     gauge_fig.add_annotation(
                         x=0.5, y=0.15,
                         text=depletion_text,
                         font={'size': 16, 'color': text_color, 'family': 'Arial, sans-serif'},
-                        showarrow=False
+                        showarrow=False,
+                        hovertext="Tahun estimasi ketika cadangan akan habis"
                     )
 
-                    # Layout yang lebih menarik
+                    # Layout yang lebih menarik dan konsisten dengan visualisasi prediksi
                     gauge_fig.update_layout(
                         height=450,
-                        margin=dict(l=30, r=30, t=70, b=30),
+                        margin=dict(l=20, r=20, t=60, b=20),
                         paper_bgcolor="white",
+                        plot_bgcolor="rgba(0,0,0,0)",  # Transparan
                         font={'color': "darkblue", 'family': "Arial, sans-serif"},
-                        shapes=[
-                            # Tambahkan bingkai halus
-                            dict(
-                                type='rect',
-                                xref='paper', yref='paper',
-                                x0=0, y0=0, x1=1, y1=1,
-                                line=dict(color='#E0E0E0', width=2),
-                                fillcolor='rgba(0,0,0,0)'
-                            )
-                        ]
+                        template="plotly_white",
+                        hovermode="closest",
+                        hoverlabel=dict(
+                            bgcolor="white",
+                            font_size=14,
+                            font_family="Arial, sans-serif"
+                        )
                     )
+
+                    # Tambahkan interaktivitas melalui tooltip kustom
+                    gauge_fig.add_trace(go.Scatter(
+                        x=[0.5],
+                        y=[0.5],
+                        mode="markers",
+                        marker=dict(
+                            size=1,
+                            color="rgba(0,0,0,0)"
+                        ),
+                        hoverinfo="text",
+                        hovertext=f"<b>Detail Cadangan {energy_type}</b><br>" +
+                                 f"Total cadangan awal: {ENERGY_RESERVES[energy_type]:,.0f}<br>" +
+                                 f"Cadangan tersisa: {reserve_text}<br>" +
+                                 f"Persentase tersisa: {max(0, percentage_remaining):.1f}%<br>" + 
+                                 f"{depletion_text}",
+                        showlegend=False
+                    ))
 
                     # Tampilkan chart
                     st.plotly_chart(gauge_fig, use_container_width=True)
