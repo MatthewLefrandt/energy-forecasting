@@ -553,8 +553,7 @@ try:
                                 metrics_col1, metrics_col2 = st.columns(2)
                                 with metrics_col1:
                                     # Warna metrik berdasarkan sisa cadangan
-                                    color = "#FF5252" if remaining_reserves <= 0 else None
-                                    delta_color = "inverse" if remaining_reserves <= 0 else "normal"
+                                    delta_color = "inverse"  # Selalu merah untuk persentase, baik positif atau negatif
 
                                     display_value = f"{abs(remaining_reserves):,.2f}"
                                     if remaining_reserves < 0:
@@ -680,7 +679,8 @@ try:
                     y=1.02,
                     xanchor="right",
                     x=1
-                )
+                ),
+                plot_bgcolor='rgba(0,0,0,0)'  # Background transparan
             )
 
             st.plotly_chart(fig, use_container_width=True)
@@ -709,6 +709,17 @@ try:
                         gauge_color = ENERGY_COLORS.get(energy_type, '#1E88E5')
                         display_value = percentage_remaining
 
+                    # Warna delta pada gauge selalu merah untuk persentase negatif
+                    delta_properties = {
+                        'reference': 100, 
+                        'decreasing': {'color': "red"}, 
+                        'suffix': '%',
+                        'font': {'size': 16}
+                    }
+                    if percentage_remaining < 0:
+                        delta_properties['valueformat'] = '.1f'  # Format untuk nilai negatif
+                        delta_properties['decreasing']['color'] = "red"
+
                     # Buat speedometer chart dengan Plotly yang lebih menarik dan interaktif
                     gauge_fig = go.Figure(go.Indicator(
                         mode="gauge+number+delta",
@@ -718,12 +729,7 @@ try:
                             'text': f"<b>Cadangan {energy_type} Tersisa</b>", 
                             'font': {'size': 24, 'family': 'Arial, sans-serif'}
                         },
-                        delta={
-                            'reference': 100, 
-                            'decreasing': {'color': "red"}, 
-                            'suffix': '%',
-                            'font': {'size': 16}
-                        },
+                        delta=delta_properties,
                         number={
                             'suffix': '%',
                             'font': {'size': 26, 'family': 'Arial, sans-serif', 'color': gauge_color}
@@ -732,13 +738,15 @@ try:
                             'axis': {
                                 'range': [0, 100], 
                                 'tickwidth': 1, 
-                                'tickcolor': "darkblue",
-                                'tickfont': {'size': 14}
+                                'tickcolor': "rgba(0,0,0,0)",  # Warna tick yang transparan
+                                'tickfont': {'size': 14},
+                                'showgrid': False,  # Matikan grid
+                                'showticklabels': True  # Tetap tampilkan label
                             },
                             'bar': {'color': gauge_color, 'thickness': 0.7},
-                            'bgcolor': 'rgba(255, 255, 255, 0.2)',  # Transparan
-                            'borderwidth': 1,
-                            'bordercolor': "#E0E0E0",
+                            'bgcolor': 'rgba(255, 255, 255, 0)',  # Sepenuhnya transparan
+                            'borderwidth': 0,  # Tanpa border
+                            'bordercolor': "rgba(0,0,0,0)",  # Transparan
                             'steps': [
                                 {'range': [0, 20], 'color': 'rgba(255, 99, 71, 0.25)'},  # Merah sangat transparan
                                 {'range': [20, 50], 'color': 'rgba(255, 165, 0, 0.25)'},  # Oranye sangat transparan
@@ -797,8 +805,8 @@ try:
                     gauge_fig.update_layout(
                         height=450,
                         margin=dict(l=20, r=20, t=60, b=20),
-                        paper_bgcolor="white",
-                        plot_bgcolor="rgba(0,0,0,0)",  # Transparan
+                        paper_bgcolor="rgba(0,0,0,0)",  # Paper background transparan
+                        plot_bgcolor="rgba(0,0,0,0)",   # Plot background transparan
                         font={'color': "darkblue", 'family': "Arial, sans-serif"},
                         template="plotly_white",
                         hovermode="closest",
@@ -806,7 +814,9 @@ try:
                             bgcolor="white",
                             font_size=14,
                             font_family="Arial, sans-serif"
-                        )
+                        ),
+                        showlegend=False,
+                        grid=dict(rows=0, columns=0)  # Tanpa grid
                     )
 
                     # Tambahkan interaktivitas melalui tooltip kustom
@@ -828,7 +838,7 @@ try:
                     ))
 
                     # Tampilkan chart
-                    st.plotly_chart(gauge_fig, use_container_width=True)
+                    st.plotly_chart(gauge_fig, use_container_width=True, config={'displayModeBar': False})
 
             # Tambah tabel ringkasan (opsional, bisa dihide secara default)
             with st.expander("Tabel Data Prediksi", expanded=False):
