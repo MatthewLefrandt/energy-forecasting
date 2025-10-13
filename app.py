@@ -234,6 +234,72 @@ def forecast_production_biodiesel(year, model, scaler, data):
     future_df["Produksi"] = moving_average_smoothing(future_df["Produksi"], window=3)
     return future_df
 
+# --- CALCULATE REMAINING RESERVES FUNCTION ---
+def calculate_remaining_reserves(energy_type, future_df, target_year):
+    """Calculate remaining reserves based on current and future production."""
+
+    # Initial reserves and production data
+    initial_reserves = {
+        "Batu Bara": 21_444_852.31,
+        "Gas Alam": 7_172_147.19,
+        "Minyak Bumi": 9_390_178.86
+    }
+
+    produced_until_2023 = {
+        "Batu Bara": 5_308_167.64,
+        "Gas Alam": 4_358_683.78,
+        "Minyak Bumi": 7_192_856.88
+    }
+
+    if energy_type not in initial_reserves:
+        return None, None, None  # Return None for non-fossil fuels
+
+    # Calculate remaining reserves as of end of 2023
+    remaining_2023 = initial_reserves[energy_type] - produced_until_2023[energy_type]
+
+    # Get yearly production from the forecast
+    if not future_df.empty:
+        yearly_production = future_df.resample('Y').sum()
+
+        # Calculate cumulative production and remaining reserves for each year
+        cumulative_production = yearly_production["Produksi"].cumsum()
+        remaining_reserves = pd.Series([remaining_2023] * len(yearly_production.index), index=yearly_production.index)
+
+        for year in yearly_production.index:
+            year_idx = yearly_production.index.get_loc(year)
+            if year_idx > 0:
+                # Subtract this year's production
+                remaining_reserves[year_idx] = remaining_reserves[year_idx-1] - yearly_production.loc[year, "Produksi"]
+            else:
+                # First year in forecast
+                remaining_reserves[year_idx] = remaining_2023 - yearly_production.loc[year, "Produksi"]
+
+        # Find depletion year (first negative value)
+        depletion_years = remaining_reserves[remaining_reserves <= 0]
+        depletion_year = None if depletion_years.empty else depletion_years.index[0].year
+
+        # Get remaining reserves at target year
+        target_date = pd.to_datetime(f"{target_year}-12-31")
+        reserves_at_target = None
+
+        for year in remaining_reserves.index:
+            if year.year >= target_year:
+                reserves_at_target = remaining_reserves[yearly_production.index.get_loc(year)]
+                break
+
+        if reserves_at_target is None and not remaining_reserves.empty:
+            # If target year is beyond our projection, use the last calculated value
+            # and subtract estimated yearly production for remaining years
+            last_year = remaining_reserves.index[-1].year
+            last_reserves = remaining_reserves.iloc[-1]
+            yearly_avg_production = yearly_production["Produksi"].mean()
+            years_diff = target_year - last_year
+            reserves_at_target = last_reserves - (yearly_avg_production * years_diff)
+
+        return remaining_reserves, depletion_year, reserves_at_target
+
+    return pd.Series([remaining_2023]), None, remaining_2023
+
 # --- ENERGY ICONS AND COLORS ---
 ENERGY_ICONS = {
     "Batu Bara": "🪨",
@@ -262,7 +328,7 @@ with st.sidebar:
     )
 
     min_year = 2025
-    max_year = 2100  # Diubah dari 2050 menjadi 2100
+    max_year = 2100  
     default_year = 2030
 
     target_year = st.slider(
@@ -605,6 +671,180 @@ try:
                 # Filter only years from 2025 onward
                 yearly_future = yearly_future[yearly_future["Tahun"] >= 2025]
                 st.dataframe(format_dataframe(yearly_future), use_container_width=True)
+
+        # Add reserves projection for fossil fuels
+        if energy_type in ["Batu Bara", "Gas Alam", "Minyak Bumi"]:
+            # Calculate reserves
+            remaining_reserves, depletion_year, reserves_at_target = calculate_remaining_reserves(
+                energy_type, future_df, target_year)
+
+            if remaining_reserves is not None:
+                # Create an expander for the reserves visualization
+                with st.expander("Proyeksi Cadangan Energi", expanded=True):
+                    st.markdown(f"### Proyeksi Cadangan {energy_type}")
+
+                    reserves_col1, reserves_col2 = st.columns([2, 1])
+
+                    with reserves_col1:
+                        # Create a visualization of reserves over time
+                        fig_reserves = go.Figure()
+
+                        # Convert index to years for cleaner display
+                        years_index = [date.year for date in remaining_reserves.index]
+
+                        # Add trace for remaining reserves
+                        fig_reserves.add_trace(go.Scatter(
+                            x=years_index,
+                            y=remaining_reserves.values,
+                            fill='tozeroy',
+                            mode='lines',
+                            name='Sisa Cadangan',
+                            line=dict(color=ENERGY_COLORS.get(energy_type, '#1E88E5'), width=2),
+                            fillcolor=f"rgba({','.join(map(str, [int(int(ENERGY_COLORS.get(energy_type, '#1E88E5')[1:3], 16)), int(ENERGY_COLORS.get(energy_type, '#1E88E5')[3:5], 16), int(ENERGY_COLORS.get(energy_type, '#1E88E5')[5:7], 16)]))},.3)"
+                        ))
+
+                        # Add depletion line if applicable
+                        if depletion_year:
+                            fig_reserves.add_vline(
+                                x=depletion_year, 
+                                line_width=2, 
+                                line_dash="dash", 
+                                line_color="red"
+                            )
+
+                            fig_reserves.add_annotation(
+                                x=depletion_year,
+                                y=remaining_reserves.max() * 0.9,
+                                text=f"Cadangan Habis ({depletion_year})",
+                                showarrow=True,
+                                arrowhead=1,
+                                ax=40,
+                                ay=-40,
+                                font=dict(color="red", size=14)
+                            )
+
+                        # Layout
+                        fig_reserves.update_layout(
+                            title=f"Proyeksi Cadangan {energy_type} Hingga Habis",
+                            xaxis_title="Tahun",
+                            yaxis_title="Sisa Cadangan (Trilliun BTU)",
+                            template="plotly_white",
+                            height=400,
+                            hovermode="x unified"
+                        )
+
+                        st.plotly_chart(fig_reserves, use_container_width=True)
+
+                    with reserves_col2:
+                        # Display cylinder visualization for remaining reserves
+                        percentage_remaining = 0
+                        initial_reserves = {
+                            "Batu Bara": 21_444_852.31,
+                            "Gas Alam": 7_172_147.19,
+                            "Minyak Bumi": 9_390_178.86
+                        }
+
+                        if reserves_at_target is not None:
+                            percentage_remaining = max(0, min(100, (reserves_at_target / initial_reserves[energy_type]) * 100))
+
+                        # Create cylinder chart
+                        fig_cylinder = go.Figure()
+
+                        # Draw cylinder 
+                        fig_cylinder.add_trace(go.Scatter(
+                            x=[0, 0, 1, 1, 0],
+                            y=[0, 1, 1, 0, 0],
+                            mode='lines',
+                            line=dict(color='black', width=2),
+                            showlegend=False
+                        ))
+
+                        # Fill cylinder based on remaining percentage
+                        y_fill = percentage_remaining / 100
+
+                        # For completely empty, still show a thin line
+                        if y_fill <= 0.01:
+                            y_fill = 0.01
+
+                        fig_cylinder.add_trace(go.Scatter(
+                            x=[0, 0, 1, 1, 0],
+                            y=[0, y_fill, y_fill, 0, 0],
+                            fill="toself",
+                            fillcolor=ENERGY_COLORS.get(energy_type, '#1E88E5'),
+                            line=dict(color=ENERGY_COLORS.get(energy_type, '#1E88E5')),
+                            showlegend=False
+                        ))
+
+                        # Add percentage text in the middle
+                        fig_cylinder.add_annotation(
+                            x=0.5,
+                            y=y_fill/2 if y_fill > 0.15 else y_fill + 0.15,
+                            text=f"{percentage_remaining:.1f}%",
+                            showarrow=False,
+                            font=dict(
+                                size=20,
+                                color='white' if y_fill > 0.15 else 'black'
+                            )
+                        )
+
+                        # Layout
+                        fig_cylinder.update_layout(
+                            title=f"Sisa Cadangan<br>Tahun {target_year}",
+                            template="plotly_white",
+                            height=300,
+                            xaxis=dict(
+                                showticklabels=False,
+                                showgrid=False,
+                                zeroline=False,
+                                range=[-0.1, 1.1]
+                            ),
+                            yaxis=dict(
+                                showticklabels=False,
+                                showgrid=False,
+                                zeroline=False,
+                                range=[-0.1, 1.1]
+                            ),
+                            margin=dict(l=10, r=10, t=70, b=10),
+                            plot_bgcolor='rgba(0,0,0,0)'
+                        )
+
+                        st.plotly_chart(fig_cylinder, use_container_width=True)
+
+                        # Display numerical information
+                        if reserves_at_target is not None:
+                            reserves_status = "Tersedia" if reserves_at_target > 0 else "Habis"
+                            reserves_color = "green" if reserves_at_target > 0 else "red"
+
+                            st.markdown(f"""
+                            <div style='text-align: center; margin-top: 10px;'>
+                                <div style='font-size: 16px; margin-bottom: 5px;'>Status Cadangan:</div>
+                                <div style='font-size: 24px; font-weight: bold; color: {reserves_color};'>{reserves_status}</div>
+                            </div>
+                            """, unsafe_allow_html=True)
+
+                            st.markdown(f"""
+                            <div style='text-align: center; margin-top: 15px;'>
+                                <div style='font-size: 16px; margin-bottom: 5px;'>Sisa Cadangan:</div>
+                                <div style='font-size: 24px; font-weight: bold;'>{reserves_at_target:,.2f} Trilliun BTU</div>
+                            </div>
+                            """, unsafe_allow_html=True)
+
+                            if depletion_year:
+                                years_until_empty = max(0, depletion_year - datetime.now().year)
+                                st.markdown(f"""
+                                <div style='text-align: center; margin-top: 15px;'>
+                                    <div style='font-size: 16px; margin-bottom: 5px;'>Habis Pada Tahun:</div>
+                                    <div style='font-size: 24px; font-weight: bold;'>{depletion_year}</div>
+                                    <div style='font-size: 14px; color: gray;'>({years_until_empty} tahun lagi)</div>
+                                </div>
+                                """, unsafe_allow_html=True)
+
+                        # Add disclaimer
+                        st.markdown("""
+                        <div style='margin-top: 30px; padding: 10px; background-color: #f8f9fa; border-radius: 5px; font-size: 12px;'>
+                            <i>* Proyeksi berdasarkan data produksi saat ini dan asumsi tidak ada penemuan cadangan baru.</i>
+                        </div>
+                        """, unsafe_allow_html=True)
 
 except FileNotFoundError:
     st.error(f"File model atau data tidak ditemukan untuk energi {energy_type}.")
