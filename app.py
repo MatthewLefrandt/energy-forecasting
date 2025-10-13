@@ -46,6 +46,24 @@ st.markdown("""
         font-size: 0.8rem;
         border-top: 1px solid #e0e0e0;
     }
+
+    /* Paksa warna teks Plotly menjadi putih */
+    .js-plotly-plot .plotly .gtitle,
+    .js-plotly-plot .plotly .xtitle,
+    .js-plotly-plot .plotly .ytitle,
+    .js-plotly-plot .plotly .g-gtitle,
+    .js-plotly-plot .plotly .g-xtitle,
+    .js-plotly-plot .plotly .g-ytitle {
+        color: white !important;
+        fill: white !important;
+    }
+
+    /* Paksa warna teks tick menjadi putih */
+    .js-plotly-plot .plotly .xtick text,
+    .js-plotly-plot .plotly .ytick text {
+        color: white !important;
+        fill: white !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -472,10 +490,26 @@ try:
 
                     # Layout
                     fig.update_layout(
-                        title=f"Produksi {energy_type} (Historis dan Prediksi)",
-                        xaxis_title="Tahun",
-                        yaxis_title="Produksi",
-                        template="plotly_white",
+                        title=dict(
+                            text=f"Produksi {energy_type} (Historis dan Prediksi)",
+                            font=dict(color='white', size=20)
+                        ),
+                        xaxis=dict(
+                            showgrid=False,
+                            gridcolor='rgba(0,0,0,0)',
+                            tickfont=dict(color='white', size=14),
+                            title_font=dict(color='white', size=16),
+                            title_text="Tahun"
+                        ),
+                        yaxis=dict(
+                            showgrid=False,
+                            gridcolor='rgba(0,0,0,0)',
+                            tickfont=dict(color='white', size=14),
+                            title_font=dict(color='white', size=16),
+                            title_text="Produksi"
+                        ),
+                        plot_bgcolor='rgba(0,0,0,0)',
+                        paper_bgcolor='rgba(0,0,0,0)',
                         height=500,
                         hovermode="x unified",
                         legend=dict(
@@ -483,24 +517,10 @@ try:
                             yanchor="bottom",
                             y=1.02,
                             xanchor="right",
-                            x=1
+                            x=1,
+                            font=dict(color="white")
                         ),
-                        plot_bgcolor='rgba(0,0,0,0)',  # Background transparan
-                        # Tambahkan konfigurasi warna teks dan grid horizontal
-                        xaxis=dict(
-                            showgrid=False,
-                            gridcolor='rgba(0,0,0,0)',
-                            tickfont=dict(color='white'),
-                            title_font=dict(color='white')
-                        ),
-                        yaxis=dict(
-                            showgrid=False,
-                            gridcolor='rgba(0,0,0,0)',
-                            tickfont=dict(color='white'),
-                            title_font=dict(color='white')
-                        ),
-                        font=dict(color='white'),
-                        title_font=dict(color='white')
+                        font=dict(family="Arial, sans-serif", color="white")
                     )
 
                     st.plotly_chart(fig, use_container_width=True)
@@ -620,264 +640,241 @@ try:
             ))
 
             # Agregasi data prediksi ke tahunan
-            if not future_df.empty:
-                future_yearly = future_df.resample('Y').mean()
+                if not future_df.empty:
+                    future_yearly = future_df.resample('Y').mean()
 
-                # Data prediksi (tahunan)
-                fig.add_trace(go.Scatter(
-                    x=future_yearly.index, 
-                    y=future_yearly["Produksi"],
-                    mode='lines+markers',
-                    name='Prediksi (Rata-rata Tahunan)',
-                    line=dict(color='#FF5252', width=2),
-                    marker=dict(size=8, symbol='diamond')
-                ))
-
-                # Data prediksi (bulanan, optional)
-                fig.add_trace(go.Scatter(
-                    x=future_df.index, 
-                    y=future_df["Produksi"],
-                    mode='lines',
-                    name='Prediksi (Bulanan)',
-                    line=dict(color='#FF5252', width=1, dash='dot'),
-                    opacity=0.3,
-                    visible='legendonly'  # Sembunyikan secara default
-                ))
-
-                # Highlight khusus untuk bulan Desember tahun target
-                target_date = pd.to_datetime(f"{target_year}-12-01")
-                if target_date in future_df.index:
+                    # Data prediksi (tahunan)
                     fig.add_trace(go.Scatter(
-                        x=[target_date],
-                        y=[future_df.loc[target_date, "Produksi"]],
-                        mode='markers',
-                        name=f'Prediksi Des {target_year}',
-                        marker=dict(
-                            color='#FF5252',
-                            size=12,
-                            symbol='star',
-                            line=dict(color='#FF5252', width=2)
-                        )
+                        x=future_yearly.index, 
+                        y=future_yearly["Produksi"],
+                        mode='lines+markers',
+                        name='Prediksi (Rata-rata Tahunan)',
+                        line=dict(color='#FF5252', width=2),
+                        marker=dict(size=8, symbol='diamond')
                     ))
 
-            # Garis vertikal pemisah dengan perbaikan
-            # Gunakan pendekatan alternatif untuk menghindari error tanggal
-            last_year = df.index.year.max()
-            first_pred_year = last_year + 1
-            first_pred_date = f"{first_pred_year}-01-01"
+                    # Data prediksi (bulanan, optional)
+                    fig.add_trace(go.Scatter(
+                        x=future_df.index, 
+                        y=future_df["Produksi"],
+                        mode='lines',
+                        name='Prediksi (Bulanan)',
+                        line=dict(color='#FF5252', width=1, dash='dot'),
+                        opacity=0.3,
+                        visible='legendonly'  # Sembunyikan secara default
+                    ))
 
-            fig.add_vline(
-                x=pd.to_datetime(first_pred_date), 
-                line_width=1, 
-                line_dash="dash", 
-                line_color="gray"
-            )
+                    # Highlight khusus untuk bulan Desember tahun target
+                    target_date = pd.to_datetime(f"{target_year}-12-01")
+                    if target_date in future_df.index:
+                        fig.add_trace(go.Scatter(
+                            x=[target_date],
+                            y=[future_df.loc[target_date, "Produksi"]],
+                            mode='markers',
+                            name=f'Prediksi Des {target_year}',
+                            marker=dict(
+                                color='#FF5252',
+                                size=12,
+                                symbol='star',
+                                line=dict(color='#FF5252', width=2)
+                            )
+                        ))
 
-            # Tambahkan anotasi terpisah
-            fig.add_annotation(
-                x=pd.to_datetime(first_pred_date),
-                y=df["Produksi"].mean() * 1.2,  # Posisikan di atas rata-rata
-                text="Mulai Prediksi",
-                showarrow=True,
-                arrowhead=1,
-                ax=40,
-                ay=-40
-            )
+                # Garis vertikal pemisah dengan perbaikan
+                # Gunakan pendekatan alternatif untuk menghindari error tanggal
+                last_year = df.index.year.max()
+                first_pred_year = last_year + 1
+                first_pred_date = f"{first_pred_year}-01-01"
 
-            # Layout
-            fig.update_layout(
-                title=f"Produksi {energy_type} (Historis dan Prediksi)",
-                xaxis_title="Tahun",
-                yaxis_title="Produksi",
-                template="plotly_white",
-                height=500,
-                hovermode="x unified",
-                legend=dict(
-                    orientation="h",
-                    yanchor="bottom",
-                    y=1.02,
-                    xanchor="right",
-                    x=1
-                ),
-                plot_bgcolor='rgba(0,0,0,0)',  # Background transparan
-                # Tambahkan konfigurasi warna teks dan grid horizontal
-                xaxis=dict(
-                    showgrid=False,
-                    gridcolor='rgba(0,0,0,0)',
-                    tickfont=dict(color='white'),
-                    title_font=dict(color='white')
-                ),
-                yaxis=dict(
-                    showgrid=False,
-                    gridcolor='rgba(0,0,0,0)',
-                    tickfont=dict(color='white'),
-                    title_font=dict(color='white')
-                ),
-                font=dict(color='white'),
-                title_font=dict(color='white')
-            )
-
-            st.plotly_chart(fig, use_container_width=True)
-
-            # Tampilkan visualisasi cadangan tersisa jika energi fosil
-            if energy_type in ["Batu Bara", "Gas Alam", "Minyak Bumi"]:
-                # Hitung cadangan tersisa
-                remaining_reserves, depletion_year, percentage_remaining = calculate_remaining_reserves(
-                    energy_type, df, future_df, target_year
+                fig.add_vline(
+                    x=pd.to_datetime(first_pred_date), 
+                    line_width=1, 
+                    line_dash="dash", 
+                    line_color="gray"
                 )
 
-                if remaining_reserves is not None:
-                    st.markdown("### Visualisasi Cadangan Tersisa")
+                # Tambahkan anotasi terpisah
+                fig.add_annotation(
+                    x=pd.to_datetime(first_pred_date),
+                    y=df["Produksi"].mean() * 1.2,  # Posisikan di atas rata-rata
+                    text="Mulai Prediksi",
+                    showarrow=True,
+                    arrowhead=1,
+                    ax=40,
+                    ay=-40,
+                    font=dict(color="white")
+                )
 
-                    # Warna berdasarkan persentase tersisa
-                    if percentage_remaining <= 0:
-                        gauge_color = "red"
-                        display_value = 0  # Minimum untuk gauge
-                    elif percentage_remaining < 20:
-                        gauge_color = "red"
-                        display_value = percentage_remaining
-                    elif percentage_remaining < 50:
-                        gauge_color = "orange"
-                        display_value = percentage_remaining
-                    else:
-                        gauge_color = ENERGY_COLORS.get(energy_type, '#1E88E5')
-                        display_value = percentage_remaining
+                # Layout
+                fig.update_layout(
+                    title=dict(
+                        text=f"Produksi {energy_type} (Historis dan Prediksi)",
+                        font=dict(color='white', size=20)
+                    ),
+                    xaxis=dict(
+                        showgrid=False,
+                        gridcolor='rgba(0,0,0,0)',
+                        tickfont=dict(color='white', size=14),
+                        title_font=dict(color='white', size=16),
+                        title_text="Tahun"
+                    ),
+                    yaxis=dict(
+                        showgrid=False,
+                        gridcolor='rgba(0,0,0,0)',
+                        tickfont=dict(color='white', size=14),
+                        title_font=dict(color='white', size=16),
+                        title_text="Produksi"
+                    ),
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    height=500,
+                    hovermode="x unified",
+                    legend=dict(
+                        orientation="h",
+                        yanchor="bottom",
+                        y=1.02,
+                        xanchor="right",
+                        x=1,
+                        font=dict(color="white")
+                    ),
+                    font=dict(family="Arial, sans-serif", color="white")
+                )
 
-                    # Warna delta pada gauge selalu merah untuk persentase negatif
-                    delta_properties = {
-                        'reference': 100, 
-                        'decreasing': {'color': "red"}, 
-                        'suffix': '%',
-                        'font': {'size': 16}
-                    }
-                    if percentage_remaining < 0:
-                        delta_properties['valueformat'] = '.1f'  # Format untuk nilai negatif
-                        delta_properties['decreasing']['color'] = "red"
+                st.plotly_chart(fig, use_container_width=True)
 
-                    # Buat speedometer chart dengan Plotly yang lebih menarik dan interaktif
-                    gauge_fig = go.Figure(go.Indicator(
-                        mode="gauge+number+delta",
-                        value=max(0, display_value),  # Pastikan tidak negatif untuk gauge
-                        domain={'x': [0, 1], 'y': [0, 1]},
-                        title={
-                            'text': f"<b>Cadangan {energy_type} Tersisa</b>", 
-                            'font': {'size': 24, 'family': 'Arial, sans-serif', 'color': 'white'}  # Ubah ke putih
-                        },
-                        delta=delta_properties,
-                        number={
-                            'suffix': '%',
-                            'font': {'size': 26, 'family': 'Arial, sans-serif', 'color': gauge_color}
-                        },
-                        gauge={
-                            'axis': {
-                                'range': [0, 100], 
-                                'tickwidth': 1, 
-                                'tickcolor': "rgba(0,0,0,0)",  # Warna tick yang transparan
-                                'tickfont': {'size': 14, 'color': 'white'},  # Ubah ke putih
-                                'showticklabels': True  # Tetap tampilkan label
-                            },
-                            'bar': {'color': gauge_color, 'thickness': 0.7},
-                            'bgcolor': 'rgba(255, 255, 255, 0)',  # Sepenuhnya transparan
-                            'borderwidth': 0,  # Tanpa border
-                            'bordercolor': "rgba(0,0,0,0)",  # Transparan
-                            'steps': [
-                                {'range': [0, 20], 'color': 'rgba(255, 99, 71, 0.25)'},  # Merah sangat transparan
-                                {'range': [20, 50], 'color': 'rgba(255, 165, 0, 0.25)'},  # Oranye sangat transparan
-                                {'range': [50, 100], 'color': 'rgba(144, 238, 144, 0.25)'}  # Hijau sangat transparan
-                            ],
-                            'threshold': {
-                                'line': {'color': "red", 'width': 3},
-                                'thickness': 0.8,
-                                'value': 20
-                            }
-                        }
-                    ))
-
-                    # Tambahkan teks keterangan nilai numerik (tanpa T BTU)
-                    reserve_text = f"{abs(remaining_reserves):,.0f}"
-                    if remaining_reserves < 0:
-                        reserve_text = f"-{reserve_text} (Defisit)"
-                        text_color = "red"
-                    else:
-                        text_color = "white"  # Ubah ke putih
-
-                    gauge_fig.add_annotation(
-                        x=0.5, y=0.3,
-                        text=reserve_text,
-                        font={'size': 22, 'color': text_color, 'family': 'Arial, sans-serif', 'weight': 'bold'},
-                        showarrow=False,
-                        hovertext="Total cadangan yang tersisa (nilai absolut)"
+                # Tampilkan visualisasi cadangan tersisa jika energi fosil
+                if energy_type in ["Batu Bara", "Gas Alam", "Minyak Bumi"]:
+                    # Hitung cadangan tersisa
+                    remaining_reserves, depletion_year, percentage_remaining = calculate_remaining_reserves(
+                        energy_type, df, future_df, target_year
                     )
 
-                    # Tambahkan teks estimasi tahun habis dengan tampilan yang lebih baik
-                    if percentage_remaining <= 0:
-                        depletion_text = f"Cadangan Habis Sekitar Tahun {depletion_year:.1f}!"
-                        text_color = "red"
-                    elif np.isinf(depletion_year):
-                        depletion_text = "Laju produksi sangat rendah"
-                        text_color = "green"
-                    else:
-                        years_until_depletion = depletion_year - datetime.now().year
-                        if years_until_depletion < 50:
-                            text_color = "red"
-                        elif years_until_depletion < 100:
-                            text_color = "orange"
+                    if remaining_reserves is not None:
+                        st.markdown("### Visualisasi Cadangan Tersisa")
+
+                        # Warna berdasarkan persentase tersisa
+                        if percentage_remaining <= 0:
+                            gauge_color = "red"
+                            display_value = 0  # Minimum untuk gauge
+                        elif percentage_remaining < 20:
+                            gauge_color = "red"
+                            display_value = percentage_remaining
+                        elif percentage_remaining < 50:
+                            gauge_color = "orange"
+                            display_value = percentage_remaining
                         else:
-                            text_color = "green"
-                        depletion_text = f"Estimasi habis pada tahun {depletion_year:.1f}"
+                            gauge_color = ENERGY_COLORS.get(energy_type, '#1E88E5')
+                            display_value = percentage_remaining
 
-                    gauge_fig.add_annotation(
-                        x=0.5, y=0.15,
-                        text=depletion_text,
-                        font={'size': 16, 'color': text_color, 'family': 'Arial, sans-serif'},
-                        showarrow=False,
-                        hovertext="Tahun estimasi ketika cadangan akan habis"
-                    )
+                        # Warna delta pada gauge selalu merah untuk persentase negatif
+                        delta_properties = {
+                            'reference': 100, 
+                            'decreasing': {'color': "red"}, 
+                            'suffix': '%',
+                            'font': {'size': 16}
+                        }
+                        if percentage_remaining < 0:
+                            delta_properties['valueformat'] = '.1f'  # Format untuk nilai negatif
+                            delta_properties['decreasing']['color'] = "red"
 
-                    # Layout yang lebih menarik dan konsisten dengan visualisasi prediksi
-                    gauge_fig.update_layout(
-                        height=450,
-                        margin=dict(l=20, r=20, t=60, b=20),
-                        paper_bgcolor="rgba(0,0,0,0)",  # Paper background transparan
-                        plot_bgcolor="rgba(0,0,0,0)",   # Plot background transparan
-                        font={'color': "white", 'family': "Arial, sans-serif"},  # Ubah semua font ke putih
-                        template="plotly_white",
-                        hovermode="closest",
-                        hoverlabel=dict(
-                            bgcolor="white",
-                            font_size=14,
-                            font_family="Arial, sans-serif"
-                        ),
-                        showlegend=False
-                    )
+                        # Buat speedometer chart dengan Plotly yang lebih menarik dan interaktif
+                        gauge_fig = go.Figure(go.Indicator(
+                            mode="gauge+number+delta",
+                            value=max(0, display_value),  # Pastikan tidak negatif untuk gauge
+                            domain={'x': [0, 1], 'y': [0, 1]},
+                            title={
+                                'text': f"<b>Cadangan {energy_type} Tersisa</b>", 
+                                'font': {'size': 24, 'family': 'Arial, sans-serif', 'color': 'white'}  # Ubah ke putih
+                            },
+                            delta=delta_properties,
+                            number={
+                                'suffix': '%',
+                                'font': {'size': 26, 'family': 'Arial, sans-serif', 'color': gauge_color}
+                            },
+                            gauge={
+                                'axis': {
+                                    'range': [0, 100], 
+                                    'tickwidth': 1, 
+                                    'tickcolor': "rgba(0,0,0,0)",  # Warna tick yang transparan
+                                    'tickfont': {'size': 14, 'color': 'white'},  # Ubah ke putih
+                                    'showticklabels': True  # Tetap tampilkan label
+                                },
+                                'bar': {'color': gauge_color, 'thickness': 0.7},
+                                'bgcolor': 'rgba(255, 255, 255, 0)',  # Sepenuhnya transparan
+                                'borderwidth': 0,  # Tanpa border
+                                'bordercolor': "rgba(0,0,0,0)",  # Transparan
+                                'steps': [
+                                    {'range': [0, 20], 'color': 'rgba(255, 99, 71, 0.25)'},  # Merah sangat transparan
+                                    {'range': [20, 50], 'color': 'rgba(255, 165, 0, 0.25)'},  # Oranye sangat transparan
+                                    {'range': [50, 100], 'color': 'rgba(144, 238, 144, 0.25)'}  # Hijau sangat transparan
+                                ],
+                                'threshold': {
+                                    'line': {'color': "red", 'width': 3},
+                                    'thickness': 0.8,
+                                    'value': 20
+                                }
+                            }
+                        ))
 
-                    # Tambahkan interaktivitas melalui tooltip kustom
-                    gauge_fig.add_trace(go.Scatter(
-                        x=[0.5],
-                        y=[0.5],
-                        mode="markers",
-                        marker=dict(
-                            size=1,
-                            color="rgba(0,0,0,0)"
-                        ),
-                        hoverinfo="text",
-                        hovertext=f"<b>Detail Cadangan {energy_type}</b><br>" +
-                                 f"Total cadangan awal: {ENERGY_RESERVES[energy_type]:,.0f}<br>" +
-                                 f"Cadangan tersisa: {reserve_text}<br>" +
-                                 f"Persentase tersisa: {max(0, percentage_remaining):.1f}%<br>" + 
-                                 f"{depletion_text}",
-                        showlegend=False
-                    ))
+                        # Tambahkan teks keterangan nilai numerik (tanpa T BTU)
+                        reserve_text = f"{abs(remaining_reserves):,.0f}"
+                        if remaining_reserves < 0:
+                            reserve_text = f"-{reserve_text} (Defisit)"
+                            text_color = "red"
+                        else:
+                            text_color = "white"  # Ubah ke putih
 
-                    # Tampilkan chart
-                    st.plotly_chart(gauge_fig, use_container_width=True, config={'displayModeBar': False})
+                        gauge_fig.add_annotation(
+                            x=0.5, y=0.3,
+                            text=reserve_text,
+                            font={'size': 22, 'color': text_color, 'family': 'Arial, sans-serif', 'weight': 'bold'},
+                            showarrow=False,
+                            hovertext="Total cadangan yang tersisa (nilai absolut)"
+                        )
 
-            # Tambah tabel ringkasan (opsional, bisa dihide secara default)
-            with st.expander("Tabel Data Prediksi", expanded=False):
-                yearly_future = future_df.resample('Y').mean().reset_index()
-                yearly_future["Tahun"] = yearly_future["Tahun"].dt.year
-                yearly_future = yearly_future.rename(columns={"Tahun": "Tahun", "Produksi": "Produksi (rata-rata)"})
-                st.dataframe(yearly_future, use_container_width=True)
+                        # Layout yang lebih menarik dan konsisten dengan visualisasi prediksi
+                        gauge_fig.update_layout(
+                            height=450,
+                            margin=dict(l=20, r=20, t=60, b=20),
+                            paper_bgcolor="rgba(0,0,0,0)",  # Paper background transparan
+                            plot_bgcolor="rgba(0,0,0,0)",   # Plot background transparan
+                            font={'color': "white", 'family': "Arial, sans-serif"},  # Ubah semua font ke putih
+                            template="plotly_white",
+                            hovermode="closest",
+                            hoverlabel=dict(
+                                bgcolor="white",
+                                font_size=14,
+                                font_family="Arial, sans-serif"
+                            ),
+                            showlegend=False
+                        )
+
+                        # Tambahkan interaktivitas melalui tooltip kustom
+                        gauge_fig.add_trace(go.Scatter(
+                            x=[0.5],
+                            y=[0.5],
+                            mode="markers",
+                            marker=dict(
+                                size=1,
+                                color="rgba(0,0,0,0)"
+                            ),
+                            hoverinfo="text",
+                            hovertext=f"<b>Detail Cadangan {energy_type}</b><br>" +
+                                     f"Total cadangan awal: {ENERGY_RESERVES[energy_type]:,.0f}<br>" +
+                                     f"Cadangan tersisa: {reserve_text}<br>" +
+                                     f"Persentase tersisa: {max(0, percentage_remaining):.1f}%",
+                            showlegend=False
+                        ))
+
+                        # Tampilkan chart
+                        st.plotly_chart(gauge_fig, use_container_width=True, config={'displayModeBar': False})
+
+                # Tambah tabel ringkasan (opsional, bisa dihide secara default)
+                with st.expander("Tabel Data Prediksi", expanded=False):
+                    yearly_future = future_df.resample('Y').mean().reset_index()
+                    yearly_future["Tahun"] = yearly_future["Tahun"].dt.year
+                    yearly_future = yearly_future.rename(columns={"Tahun": "Tahun", "Produksi": "Produksi (rata-rata)"})
+                    st.dataframe(yearly_future, use_container_width=True)
 
 except FileNotFoundError:
     st.error(f"File model atau data tidak ditemukan untuk energi {energy_type}.")
