@@ -259,15 +259,20 @@ def calculate_remaining_reserves(energy_type, future_df, target_year):
 
     # Get yearly production from the forecast (only 2024 and beyond)
     if not future_df.empty:
-        # Filter only dates from 2024 onwards to avoid double counting
-        future_df_filtered = future_df[future_df.index.year >= 2024]
-        yearly_production = future_df_filtered.resample('Y').sum()
+        # Handle differently based on whether the data is monthly or yearly
+        if energy_type != "Biodiesel":
+            # For monthly data, we need to resample to yearly
+            # Filter only dates from 2024 onwards to avoid double counting
+            future_df_filtered = future_df[future_df.index.year >= 2024]
+
+            # For SVR models (monthly data), we need to resample to get yearly totals
+            yearly_production = future_df_filtered.resample('Y').sum()
+        else:
+            # For Biodiesel (already yearly data), filter and use as is
+            yearly_production = future_df[future_df.index >= 2024]
 
         # Initialize the series with the value at the end of 2023
         remaining_reserves = pd.Series(index=yearly_production.index, dtype=float)
-
-        # Calculate cumulative future production and subtract from remaining_2023
-        cumulative_production = yearly_production["Produksi"].cumsum()
 
         # For each year in the forecast, subtract that year's production from previous remaining
         current_remaining = remaining_2023
@@ -287,16 +292,29 @@ def calculate_remaining_reserves(energy_type, future_df, target_year):
         # Find the closest year in our calculated reserves
         closest_year = None
         for year in remaining_reserves.index:
-            if year.year >= target_year:
-                closest_year = year
-                break
+            if hasattr(year, 'year'):
+                # For datetime index
+                if year.year >= target_year:
+                    closest_year = year
+                    break
+            else:
+                # For integer index (Biodiesel case)
+                if year >= target_year:
+                    closest_year = year
+                    break
 
         if closest_year is not None:
             reserves_at_target = remaining_reserves.loc[closest_year]
         elif not remaining_reserves.empty:
             # If target year is beyond our projection, use the last calculated value
             # and subtract estimated yearly production for remaining years
-            last_year = remaining_reserves.index[-1].year
+            if hasattr(remaining_reserves.index[-1], 'year'):
+                # For datetime index
+                last_year = remaining_reserves.index[-1].year
+            else:
+                # For integer index (Biodiesel case)
+                last_year = remaining_reserves.index[-1]
+
             last_reserves = remaining_reserves.iloc[-1]
             yearly_avg_production = yearly_production["Produksi"].mean()
             years_diff = target_year - last_year
@@ -308,7 +326,16 @@ def calculate_remaining_reserves(energy_type, future_df, target_year):
         # For visualization, add the 2023 value at the beginning using concat
         start_date = pd.to_datetime('2023-12-31')
         start_series = pd.Series([remaining_2023], index=[start_date])
-        full_reserves = pd.concat([start_series, remaining_reserves])
+
+        # Make sure indexes match for concatenation
+        if hasattr(remaining_reserves.index[0], 'year'):
+            # If remaining_reserves has DatetimeIndex
+            full_reserves = pd.concat([start_series, remaining_reserves])
+        else:
+            # If remaining_reserves has Int64Index (Biodiesel case)
+            # Convert start_series index to match
+            start_series = pd.Series([remaining_2023], index=[2023])
+            full_reserves = pd.concat([start_series, remaining_reserves])
 
         return full_reserves, depletion_year, reserves_at_target
 
