@@ -798,14 +798,14 @@ try:
                             }
                         ))
 
-                        # Tambahkan teks keterangan nilai numerik (tanpa T BTU)
+                        # Tambahkan teks keterangan nilai numerik (tanpa T BTU dan tanpa teks defisit)
                         reserve_text = f"{abs(remaining_reserves):,.0f}"
                         if remaining_reserves < 0:
-                            reserve_text = f"-{reserve_text} (Defisit)"
+                            reserve_text = f"-{reserve_text}"  # Hapus teks "(Defisit)", hanya tampilkan nilai dengan tanda minus
                             text_color = "red"
                         else:
                             text_color = "#808080"  # Abu-abu
-
+                        
                         gauge_fig.add_annotation(
                             x=0.5, y=0.3,
                             text=reserve_text,
@@ -813,23 +813,25 @@ try:
                             showarrow=False,
                             hovertext="Total cadangan yang tersisa (nilai absolut)"
                         )
-
-                        # Layout yang lebih menarik dan konsisten dengan visualisasi prediksi
-                        gauge_fig.update_layout(
-                            height=450,
-                            margin=dict(l=20, r=20, t=60, b=20),
-                            paper_bgcolor="rgba(0,0,0,0)",  # Paper background transparan
-                            plot_bgcolor="rgba(0,0,0,0)",   # Plot background transparan
-                            font={'color': "#808080", 'family': "Arial, sans-serif"},  # Abu-abu
-                            template="plotly_white",
-                            hovermode="closest",
-                            hoverlabel=dict(
-                                bgcolor="white",
-                                font_size=14,
-                                font_family="Arial, sans-serif"
+                        
+                        # Hapus anotasi estimasi tahun habis di speedometer (sudah tidak ada dalam kode)
+                        
+                        # Tooltip juga disederhanakan, hapus teks tambahan
+                        gauge_fig.add_trace(go.Scatter(
+                            x=[0.5],
+                            y=[0.5],
+                            mode="markers",
+                            marker=dict(
+                                size=1,
+                                color="rgba(0,0,0,0)"
                             ),
+                            hoverinfo="text",
+                            hovertext=f"<b>Detail Cadangan {energy_type}</b><br>" +
+                                    f"Total cadangan awal: {ENERGY_RESERVES[energy_type]:,.0f}<br>" +
+                                    f"Cadangan tersisa: {reserve_text}<br>" +
+                                    f"Persentase tersisa: {max(0, percentage_remaining):.1f}%",
                             showlegend=False
-                        )
+                        ))
 
                         # Tambahkan interaktivitas melalui tooltip kustom
                         gauge_fig.add_trace(go.Scatter(
