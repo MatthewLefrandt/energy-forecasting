@@ -795,7 +795,7 @@ try:
                         
                         # Tambahkan label persentase di posisi atas
                         gauge_fig.add_annotation(
-                            x=0.5, y=0.65,
+                            x=0.5, y=0.55,
                             text=f"{max(0, display_value):.1f}%",
                             font={'size': 26, 'color': gauge_color, 'family': 'Arial, sans-serif', 'weight': 'bold'},
                             showarrow=False
