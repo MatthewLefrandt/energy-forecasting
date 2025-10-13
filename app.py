@@ -760,17 +760,20 @@ try:
                             delta_properties['decreasing']['color'] = "red"
 
                         # Buat speedometer chart dengan Plotly yang lebih menarik dan interaktif
+                        # Buat speedometer chart dengan posisi label yang disesuaikan
                         gauge_fig = go.Figure(go.Indicator(
-                            mode="gauge+number",  # Hapus "+delta" untuk menghilangkan tampilan persentase tambahan
-                            value=max(0, display_value),  # Pastikan tidak negatif untuk gauge
+                            mode="gauge+number",
+                            value=max(0, display_value),
                             domain={'x': [0, 1], 'y': [0, 1]},
                             title={
                                 'text': f"<b>Cadangan {energy_type} Tersisa</b>", 
-                                'font': {'size': 24, 'family': 'Arial, sans-serif', 'color': '#808080'}  # Abu-abu
+                                'font': {'size': 24, 'family': 'Arial, sans-serif', 'color': '#808080'}
                             },
                             number={
-                                'suffix': '%',  # Tetap menampilkan satu label persentase
-                                'font': {'size': 26, 'family': 'Arial, sans-serif', 'color': gauge_color}
+                                'suffix': '%',
+                                'font': {'size': 26, 'family': 'Arial, sans-serif', 'color': gauge_color},
+                                'prefix': '',
+                                # Posisikan label persentase lebih ke atas
                             },
                             gauge={
                                 'axis': {
@@ -796,6 +799,37 @@ try:
                                 }
                             }
                         ))
+                        
+                        # Tambahkan teks keterangan nilai numerik dengan posisi yang diatur ulang
+                        reserve_text = f"{abs(remaining_reserves):,.0f}"
+                        if remaining_reserves < 0:
+                            reserve_text = f"-{reserve_text}"
+                            text_color = "red"
+                        else:
+                            text_color = "#808080"
+                        
+                        # Posisikan label persentase di atas dengan mengatur ulang anotasi
+                        gauge_fig.add_annotation(
+                            x=0.5, y=0.65,  # Posisi vertikal yang lebih tinggi (0.65 vs 0.5 default)
+                            text=f"{max(0, display_value):.1f}%",
+                            font={'size': 26, 'color': gauge_color, 'family': 'Arial, sans-serif', 'weight': 'bold'},
+                            showarrow=False
+                        )
+                        
+                        # Label nilai numerik di bawah label persentase
+                        gauge_fig.add_annotation(
+                            x=0.5, y=0.45,  # Posisi di bawah label persentase
+                            text=reserve_text,
+                            font={'size': 22, 'color': text_color, 'family': 'Arial, sans-serif', 'weight': 'bold'},
+                            showarrow=False
+                        )
+                        
+                        # Hapus label persentase bawaan dari gauge
+                        gauge_fig.update_layout(
+                            annotations=[
+                                # Hapus semua anotasi default
+                            ] + [ann for ann in gauge_fig.layout.annotations if ann.get('text') != f"{max(0, display_value):.1f}%"]
+                        )
 
                         # Tambahkan teks keterangan nilai numerik (tanpa T BTU dan tanpa teks defisit)
                         reserve_text = f"{abs(remaining_reserves):,.0f}"
