@@ -551,14 +551,15 @@ try:
 
                             if remaining_reserves is not None:
                                 metrics_col1, metrics_col2 = st.columns(2)
+                                # Bagian metrik cadangan tersisa
                                 with metrics_col1:
                                     # Warna metrik berdasarkan sisa cadangan
-                                    delta_color = "inverse"  # Selalu merah untuk persentase, baik positif atau negatif
-
+                                    delta_color = "normal" if percentage_remaining > 0 else "inverse"
+                                
                                     display_value = f"{abs(remaining_reserves):,.2f}"
                                     if remaining_reserves < 0:
                                         display_value = f"-{display_value}"
-
+                                
                                     st.metric(
                                         "Cadangan Tersisa", 
                                         display_value, 
