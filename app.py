@@ -54,15 +54,15 @@ st.markdown("""
     .js-plotly-plot .plotly .g-gtitle,
     .js-plotly-plot .plotly .g-xtitle,
     .js-plotly-plot .plotly .g-ytitle {
-        color: white !important;
-        fill: white !important;
+        color: grey !important;
+        fill: grey !important;
     }
 
     /* Paksa warna teks tick menjadi putih */
     .js-plotly-plot .plotly .xtick text,
     .js-plotly-plot .plotly .ytick text {
-        color: white !important;
-        fill: white !important;
+        color: grey !important;
+        fill: grey !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -492,20 +492,20 @@ try:
                     fig.update_layout(
                         title=dict(
                             text=f"Produksi {energy_type} (Historis dan Prediksi)",
-                            font=dict(color='white', size=20)
+                            font=dict(color='grey', size=20)
                         ),
                         xaxis=dict(
                             showgrid=False,
                             gridcolor='rgba(0,0,0,0)',
-                            tickfont=dict(color='white', size=14),
-                            title_font=dict(color='white', size=16),
+                            tickfont=dict(color='grey', size=14),
+                            title_font=dict(color='grey', size=16),
                             title_text="Tahun"
                         ),
                         yaxis=dict(
                             showgrid=False,
                             gridcolor='rgba(0,0,0,0)',
-                            tickfont=dict(color='white', size=14),
-                            title_font=dict(color='white', size=16),
+                            tickfont=dict(color='grey', size=14),
+                            title_font=dict(color='grey', size=16),
                             title_text="Produksi"
                         ),
                         plot_bgcolor='rgba(0,0,0,0)',
@@ -518,9 +518,9 @@ try:
                             y=1.02,
                             xanchor="right",
                             x=1,
-                            font=dict(color="white")
+                            font=dict(color="grey")
                         ),
-                        font=dict(family="Arial, sans-serif", color="white")
+                        font=dict(family="Arial, sans-serif", color="grey")
                     )
 
                     st.plotly_chart(fig, use_container_width=True)
@@ -702,27 +702,27 @@ try:
                     arrowhead=1,
                     ax=40,
                     ay=-40,
-                    font=dict(color="white")
+                    font=dict(color="grey")
                 )
 
                 # Layout
                 fig.update_layout(
                     title=dict(
                         text=f"Produksi {energy_type} (Historis dan Prediksi)",
-                        font=dict(color='white', size=20)
+                        font=dict(color='grey', size=20)
                     ),
                     xaxis=dict(
                         showgrid=False,
                         gridcolor='rgba(0,0,0,0)',
-                        tickfont=dict(color='white', size=14),
-                        title_font=dict(color='white', size=16),
+                        tickfont=dict(color='grey', size=14),
+                        title_font=dict(color='grey', size=16),
                         title_text="Tahun"
                     ),
                     yaxis=dict(
                         showgrid=False,
                         gridcolor='rgba(0,0,0,0)',
-                        tickfont=dict(color='white', size=14),
-                        title_font=dict(color='white', size=16),
+                        tickfont=dict(color='grey', size=14),
+                        title_font=dict(color='grey', size=16),
                         title_text="Produksi"
                     ),
                     plot_bgcolor='rgba(0,0,0,0)',
@@ -735,9 +735,9 @@ try:
                         y=1.02,
                         xanchor="right",
                         x=1,
-                        font=dict(color="white")
+                        font=dict(color="grey")
                     ),
-                    font=dict(family="Arial, sans-serif", color="white")
+                    font=dict(family="Arial, sans-serif", color="grey")
                 )
 
                 st.plotly_chart(fig, use_container_width=True)
@@ -784,7 +784,7 @@ try:
                             domain={'x': [0, 1], 'y': [0, 1]},
                             title={
                                 'text': f"<b>Cadangan {energy_type} Tersisa</b>", 
-                                'font': {'size': 24, 'family': 'Arial, sans-serif', 'color': 'white'}  # Ubah ke putih
+                                'font': {'size': 24, 'family': 'Arial, sans-serif', 'color': 'grey'}  # Ubah ke putih
                             },
                             delta=delta_properties,
                             number={
@@ -796,7 +796,7 @@ try:
                                     'range': [0, 100], 
                                     'tickwidth': 1, 
                                     'tickcolor': "rgba(0,0,0,0)",  # Warna tick yang transparan
-                                    'tickfont': {'size': 14, 'color': 'white'},  # Ubah ke putih
+                                    'tickfont': {'size': 14, 'color': 'grey'},  # Ubah ke putih
                                     'showticklabels': True  # Tetap tampilkan label
                                 },
                                 'bar': {'color': gauge_color, 'thickness': 0.7},
@@ -822,7 +822,7 @@ try:
                             reserve_text = f"-{reserve_text} (Defisit)"
                             text_color = "red"
                         else:
-                            text_color = "white"  # Ubah ke putih
+                            text_color = "grey"  # Ubah ke putih
 
                         gauge_fig.add_annotation(
                             x=0.5, y=0.3,
@@ -838,11 +838,11 @@ try:
                             margin=dict(l=20, r=20, t=60, b=20),
                             paper_bgcolor="rgba(0,0,0,0)",  # Paper background transparan
                             plot_bgcolor="rgba(0,0,0,0)",   # Plot background transparan
-                            font={'color': "white", 'family': "Arial, sans-serif"},  # Ubah semua font ke putih
-                            template="plotly_white",
+                            font={'color': "grey", 'family': "Arial, sans-serif"},  # Ubah semua font ke putih
+                            template="plotly_grey",
                             hovermode="closest",
                             hoverlabel=dict(
-                                bgcolor="white",
+                                bgcolor="grey",
                                 font_size=14,
                                 font_family="Arial, sans-serif"
                             ),
