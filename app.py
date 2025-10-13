@@ -156,11 +156,14 @@ def forecast_production_biodiesel(year, model, scaler, data):
     return future_df
 
 # --- RESERVE CALCULATION FUNCTION ---
-# --- RESERVE CALCULATION FUNCTION ---
 def calculate_remaining_reserves(energy_type, historical_df, future_df, target_year):
     """
     Menghitung cadangan energi yang tersisa dan estimasi tahun habisnya.
-    Data konsumsi dikonversi ke format tahunan untuk perhitungan yang akurat.
+
+    Metode:
+    1. Mengambil data historis tahunan dari file excel (1980-2023)
+    2. Untuk tahun 2024 dan setelahnya, menggunakan nilai prediksi (bulan Desember untuk data bulanan)
+    3. Mengurangi cadangan awal dengan total konsumsi
 
     Args:
         energy_type (str): Jenis energi yang dipilih
@@ -177,72 +180,103 @@ def calculate_remaining_reserves(energy_type, historical_df, future_df, target_y
     # Ambil total cadangan awal
     initial_reserves = ENERGY_RESERVES[energy_type]
 
-    # Konversi data historis ke format tahunan dan hitung jumlah produksi
+    # 1. Dapatkan data historis dari file Excel (1980-2023)
+    # Load kembali data dari Excel untuk mendapatkan data tahunan asli, bukan interpolasi bulanan
+    raw_data = pd.read_excel(DATA_PATH)
+    raw_data = raw_data[raw_data["Jenis_Energi"] == energy_type]
+
+    # Ambil data tahunan dari 1980-2023
+    historical_years = range(1980, 2024)  # dari 1980 hingga 2023
+    historical_consumption = 0
+
+    # Jika data bentuknya sudah tahunan
+    if raw_data.shape[0] > 0:
+        # Ambil baris data untuk energi yang dipilih
+        energy_data = raw_data.iloc[0]
+
+        # Jumlahkan konsumsi historis (1980-2023)
+        for year in historical_years:
+            if str(year) in energy_data:
+                yearly_value = energy_data[str(year)]
+                if pd.notna(yearly_value):
+                    historical_consumption += yearly_value
+
+    # 2. Dapatkan data prediksi dari tahun 2024 sampai tahun target
+    future_consumption = 0
+
     if energy_type == "Biodiesel":
-        # Untuk data tahunan (biodiesel), tidak perlu konversi
-        historical_consumption = historical_df["Produksi"].sum()
+        # Untuk data biodiesel yang sudah dalam format tahunan
+        for year in range(2024, target_year + 1):
+            if year in future_df.index:
+                future_consumption += future_df.loc[year, "Produksi"]
     else:
-        # Konversi data bulanan ke tahunan
-        yearly_historical = historical_df.resample('Y').sum()
-        historical_consumption = yearly_historical["Produksi"].sum()
+        # Untuk data lain yang dalam format bulanan, ambil hanya bulan Desember sebagai nilai tahunan
+        for year in range(2024, target_year + 1):
+            december = f"{year}-12"
+            if december in future_df.index:
+                future_consumption += future_df.loc[december, "Produksi"]
 
-    # Konversi data prediksi ke format tahunan dan hitung jumlah produksi hingga tahun target
+    # 3. Hitung cadangan tersisa
+    remaining_reserves = initial_reserves - historical_consumption - future_consumption
+
+    # 4. Hitung persentase cadangan tersisa
+    percentage_remaining = (remaining_reserves / initial_reserves) * 100
+
+    # 5. Prediksi tahun habisnya berdasarkan laju konsumsi terakhir
     if energy_type == "Biodiesel":
-        # Untuk data tahunan (biodiesel), tidak perlu konversi
-        future_consumption_to_target = future_df[future_df.index <= target_year]["Produksi"].sum()
+        # Gunakan nilai prediksi tahun terakhir
+        if target_year in future_df.index:
+            annual_consumption_rate = future_df.loc[target_year, "Produksi"]
+        else:
+            annual_consumption_rate = future_df["Produksi"].iloc[-1]
     else:
-        # Konversi data bulanan ke tahunan
-        yearly_future = future_df.resample('Y').sum()
-        future_consumption_to_target = yearly_future[yearly_future.index.year <= target_year]["Produksi"].sum()
+        # Gunakan nilai prediksi Desember tahun terakhir
+        december_target = f"{target_year}-12"
+        if december_target in future_df.index:
+            annual_consumption_rate = future_df.loc[december_target, "Produksi"]
+        else:
+            # Ambil data Desember terakhir yang ada
+            last_year = future_df.index[-1].year
+            december_last = f"{last_year}-12"
+            if december_last in future_df.index:
+                annual_consumption_rate = future_df.loc[december_last, "Produksi"]
+            else:
+                annual_consumption_rate = future_df["Produksi"].iloc[-1]
 
-    # Hitung cadangan tersisa pada tahun target
-    remaining_reserves = initial_reserves - historical_consumption - future_consumption_to_target
-
-    # Jika cadangan sudah habis pada tahun target
+    # Jika cadangan tersisa negatif, cari tahun habisnya antara tahun awal dan target
     if remaining_reserves <= 0:
-        # Cari tahun di mana cadangan habis dengan lebih akurat
+        # Reset nilai konsumsi historis
         cumulative_consumption = historical_consumption
 
-        if energy_type == "Biodiesel":
-            # Untuk data tahunan (biodiesel)
-            for year, row in future_df.iterrows():
-                cumulative_consumption += row["Produksi"]
-                if cumulative_consumption >= initial_reserves:
-                    # Interpolasi untuk mendapatkan fraksi tahun
-                    prev_consumption = cumulative_consumption - row["Produksi"]
-                    fraction = (initial_reserves - prev_consumption) / row["Produksi"]
-                    estimated_year = year - 1 + fraction
-                    return 0, estimated_year, 0
-        else:
-            # Untuk data bulanan, gunakan data yang dikonversi ke tahunan
-            yearly_future_full = future_df.resample('Y').sum()
-            for year, row in yearly_future_full.iterrows():
-                year_val = year.year
-                cumulative_consumption += row["Produksi"]
-                if cumulative_consumption >= initial_reserves:
-                    # Interpolasi untuk mendapatkan fraksi tahun
-                    prev_consumption = cumulative_consumption - row["Produksi"]
-                    fraction = (initial_reserves - prev_consumption) / row["Produksi"]
-                    estimated_year = year_val - 1 + fraction
-                    return 0, estimated_year, 0
+        # Cari tahun di mana cadangan habis
+        for year in range(2024, target_year + 1):
+            if energy_type == "Biodiesel":
+                if year in future_df.index:
+                    year_consumption = future_df.loc[year, "Produksi"]
+                else:
+                    continue
+            else:
+                december = f"{year}-12"
+                if december in future_df.index:
+                    year_consumption = future_df.loc[december, "Produksi"]
+                else:
+                    continue
 
-    # Jika cadangan masih tersisa, prediksi tahun habisnya berdasarkan laju konsumsi
-    if energy_type == "Biodiesel":
-        # Untuk data tahunan, gunakan rata-rata konsumsi tahunan terakhir
-        last_years = 5  # Gunakan 5 tahun terakhir untuk rata-rata
-        annual_consumption = future_df["Produksi"].iloc[-last_years:].mean() if len(future_df) >= last_years else future_df["Produksi"].mean()
+            cumulative_consumption += year_consumption
+            if cumulative_consumption >= initial_reserves:
+                # Interpolasi untuk mendapatkan fraksi tahun yang lebih akurat
+                prev_consumption = cumulative_consumption - year_consumption
+                remaining = initial_reserves - prev_consumption
+                fraction = remaining / year_consumption
+                estimated_year = year - 1 + fraction
+                return 0, estimated_year, 0
+
+        # Jika tidak bisa ditemukan tahun pastinya, gunakan nilai sebelum tahun target
+        return 0, target_year - 1, 0
     else:
-        # Untuk data bulanan, konversi ke konsumsi tahunan menggunakan data tahunan
-        yearly_future_rate = future_df.resample('Y').sum()
-        last_years = 5  # Gunakan 5 tahun terakhir untuk rata-rata
-        annual_consumption = yearly_future_rate["Produksi"].iloc[-last_years:].mean() if len(yearly_future_rate) >= last_years else yearly_future_rate["Produksi"].mean()
-
-    # Hitung berapa tahun yang tersisa berdasarkan laju konsumsi tahunan
-    years_remaining = remaining_reserves / annual_consumption if annual_consumption > 0 else float('inf')
-    estimated_year_depleted = target_year + years_remaining
-
-    # Hitung persentase cadangan tersisa
-    percentage_remaining = (remaining_reserves / initial_reserves) * 100
+        # Hitung sisa tahun berdasarkan konsumsi tahunan terakhir
+        years_remaining = remaining_reserves / annual_consumption_rate if annual_consumption_rate > 0 else float('inf')
+        estimated_year_depleted = target_year + years_remaining
 
     return remaining_reserves, estimated_year_depleted, percentage_remaining
     
