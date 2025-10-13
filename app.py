@@ -618,201 +618,201 @@ try:
             ))
 
             # Agregasi data prediksi ke tahunan
-                if not future_df.empty:
-                    future_yearly = future_df.resample('Y').mean()
+            if not future_df.empty:
+                future_yearly = future_df.resample('Y').mean()
 
-                    # Data prediksi (tahunan)
+                # Data prediksi (tahunan)
+                fig.add_trace(go.Scatter(
+                    x=future_yearly.index, 
+                    y=future_yearly["Produksi"],
+                    mode='lines+markers',
+                    name='Prediksi (Rata-rata Tahunan)',
+                    line=dict(color='#FF5252', width=2),
+                    marker=dict(size=8, symbol='diamond')
+                ))
+
+                # Data prediksi (bulanan, optional)
+                fig.add_trace(go.Scatter(
+                    x=future_df.index, 
+                    y=future_df["Produksi"],
+                    mode='lines',
+                    name='Prediksi (Bulanan)',
+                    line=dict(color='#FF5252', width=1, dash='dot'),
+                    opacity=0.3,
+                    visible='legendonly'  # Sembunyikan secara default
+                ))
+
+                # Highlight khusus untuk bulan Desember tahun target
+                target_date = pd.to_datetime(f"{target_year}-12-01")
+                if target_date in future_df.index:
                     fig.add_trace(go.Scatter(
-                        x=future_yearly.index, 
-                        y=future_yearly["Produksi"],
-                        mode='lines+markers',
-                        name='Prediksi (Rata-rata Tahunan)',
-                        line=dict(color='#FF5252', width=2),
-                        marker=dict(size=8, symbol='diamond')
+                        x=[target_date],
+                        y=[future_df.loc[target_date, "Produksi"]],
+                        mode='markers',
+                        name=f'Prediksi Des {target_year}',
+                        marker=dict(
+                            color='#FF5252',
+                            size=12,
+                            symbol='star',
+                            line=dict(color='#FF5252', width=2)
+                        )
                     ))
 
-                    # Data prediksi (bulanan, optional)
-                    fig.add_trace(go.Scatter(
-                        x=future_df.index, 
-                        y=future_df["Produksi"],
-                        mode='lines',
-                        name='Prediksi (Bulanan)',
-                        line=dict(color='#FF5252', width=1, dash='dot'),
-                        opacity=0.3,
-                        visible='legendonly'  # Sembunyikan secara default
-                    ))
+            # Garis vertikal pemisah dengan perbaikan
+            # Gunakan pendekatan alternatif untuk menghindari error tanggal
+            last_year = df.index.year.max()
+            first_pred_year = last_year + 1
+            first_pred_date = f"{first_pred_year}-01-01"
 
-                    # Highlight khusus untuk bulan Desember tahun target
-                    target_date = pd.to_datetime(f"{target_year}-12-01")
-                    if target_date in future_df.index:
-                        fig.add_trace(go.Scatter(
-                            x=[target_date],
-                            y=[future_df.loc[target_date, "Produksi"]],
-                            mode='markers',
-                            name=f'Prediksi Des {target_year}',
-                            marker=dict(
-                                color='#FF5252',
-                                size=12,
-                                symbol='star',
-                                line=dict(color='#FF5252', width=2)
-                            )
-                        ))
+            fig.add_vline(
+                x=pd.to_datetime(first_pred_date), 
+                line_width=1, 
+                line_dash="dash", 
+                line_color="gray"
+            )
 
-                # Garis vertikal pemisah dengan perbaikan
-                # Gunakan pendekatan alternatif untuk menghindari error tanggal
-                last_year = df.index.year.max()
-                first_pred_year = last_year + 1
-                first_pred_date = f"{first_pred_year}-01-01"
+            # Tambahkan anotasi terpisah
+            fig.add_annotation(
+                x=pd.to_datetime(first_pred_date),
+                y=df["Produksi"].mean() * 1.2,  # Posisikan di atas rata-rata
+                text="Mulai Prediksi",
+                showarrow=True,
+                arrowhead=1,
+                ax=40,
+                ay=-40
+            )
 
-                fig.add_vline(
-                    x=pd.to_datetime(first_pred_date), 
-                    line_width=1, 
-                    line_dash="dash", 
-                    line_color="gray"
+            # Layout
+            fig.update_layout(
+                title=f"Produksi {energy_type} (Historis dan Prediksi)",
+                xaxis_title="Tahun",
+                yaxis_title="Produksi",
+                template="plotly_white",
+                height=500,
+                hovermode="x unified",
+                legend=dict(
+                    orientation="h",
+                    yanchor="bottom",
+                    y=1.02,
+                    xanchor="right",
+                    x=1
+                )
+            )
+
+            st.plotly_chart(fig, use_container_width=True)
+
+            # Tampilkan visualisasi cadangan tersisa jika energi fosil
+            if energy_type in ["Batu Bara", "Gas Alam", "Minyak Bumi"]:
+                # Hitung cadangan tersisa
+                remaining_reserves, depletion_year, percentage_remaining = calculate_remaining_reserves(
+                    energy_type, df, future_df, target_year
                 )
 
-                # Tambahkan anotasi terpisah
-                fig.add_annotation(
-                    x=pd.to_datetime(first_pred_date),
-                    y=df["Produksi"].mean() * 1.2,  # Posisikan di atas rata-rata
-                    text="Mulai Prediksi",
-                    showarrow=True,
-                    arrowhead=1,
-                    ax=40,
-                    ay=-40
-                )
+                if remaining_reserves is not None:
+                    st.markdown("### Visualisasi Cadangan Tersisa")
 
-                # Layout
-                fig.update_layout(
-                    title=f"Produksi {energy_type} (Historis dan Prediksi)",
-                    xaxis_title="Tahun",
-                    yaxis_title="Produksi",
-                    template="plotly_white",
-                    height=500,
-                    hovermode="x unified",
-                    legend=dict(
-                        orientation="h",
-                        yanchor="bottom",
-                        y=1.02,
-                        xanchor="right",
-                        x=1
-                    )
-                )
+                    # Warna berdasarkan persentase tersisa
+                    if percentage_remaining <= 0:
+                        gauge_color = "red"
+                        display_value = 0  # Minimum untuk gauge
+                    elif percentage_remaining < 20:
+                        gauge_color = "red"
+                        display_value = percentage_remaining
+                    elif percentage_remaining < 50:
+                        gauge_color = "orange"
+                        display_value = percentage_remaining
+                    else:
+                        gauge_color = ENERGY_COLORS.get(energy_type, '#1E88E5')
+                        display_value = percentage_remaining
 
-                st.plotly_chart(fig, use_container_width=True)
-
-                # Tampilkan visualisasi cadangan tersisa jika energi fosil
-                if energy_type in ["Batu Bara", "Gas Alam", "Minyak Bumi"]:
-                    # Hitung cadangan tersisa
-                    remaining_reserves, depletion_year, percentage_remaining = calculate_remaining_reserves(
-                        energy_type, df, future_df, target_year
-                    )
-
-                    if remaining_reserves is not None:
-                        st.markdown("### Visualisasi Cadangan Tersisa")
-
-                        # Warna berdasarkan persentase tersisa
-                        if percentage_remaining <= 0:
-                            gauge_color = "red"
-                            display_value = 0  # Minimum untuk gauge
-                        elif percentage_remaining < 20:
-                            gauge_color = "red"
-                            display_value = percentage_remaining
-                        elif percentage_remaining < 50:
-                            gauge_color = "orange"
-                            display_value = percentage_remaining
-                        else:
-                            gauge_color = ENERGY_COLORS.get(energy_type, '#1E88E5')
-                            display_value = percentage_remaining
-
-                        # Buat speedometer chart dengan Plotly
-                        gauge_fig = go.Figure(go.Indicator(
-                            mode="gauge+number+delta",
-                            value=max(0, display_value),  # Pastikan tidak negatif untuk gauge
-                            domain={'x': [0, 1], 'y': [0, 1]},
-                            title={'text': f"Cadangan {energy_type} Tersisa", 'font': {'size': 24}},
-                            delta={'reference': 100, 'decreasing': {'color': "red"}},
-                            gauge={
-                                'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "darkblue"},
-                                'bar': {'color': gauge_color},
-                                'bgcolor': "white",
-                                'borderwidth': 2,
-                                'bordercolor': "gray",
-                                'steps': [
-                                    {'range': [0, 20], 'color': 'rgba(255, 99, 71, 0.3)'},  # Merah transparan
-                                    {'range': [20, 50], 'color': 'rgba(255, 165, 0, 0.3)'},  # Oranye transparan
-                                    {'range': [50, 100], 'color': 'rgba(144, 238, 144, 0.3)'}  # Hijau transparan
-                                ],
-                                'threshold': {
-                                    'line': {'color': "red", 'width': 4},
-                                    'thickness': 0.75,
-                                    'value': 20
-                                }
+                    # Buat speedometer chart dengan Plotly
+                    gauge_fig = go.Figure(go.Indicator(
+                        mode="gauge+number+delta",
+                        value=max(0, display_value),  # Pastikan tidak negatif untuk gauge
+                        domain={'x': [0, 1], 'y': [0, 1]},
+                        title={'text': f"Cadangan {energy_type} Tersisa", 'font': {'size': 24}},
+                        delta={'reference': 100, 'decreasing': {'color': "red"}},
+                        gauge={
+                            'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "darkblue"},
+                            'bar': {'color': gauge_color},
+                            'bgcolor': "white",
+                            'borderwidth': 2,
+                            'bordercolor': "gray",
+                            'steps': [
+                                {'range': [0, 20], 'color': 'rgba(255, 99, 71, 0.3)'},  # Merah transparan
+                                {'range': [20, 50], 'color': 'rgba(255, 165, 0, 0.3)'},  # Oranye transparan
+                                {'range': [50, 100], 'color': 'rgba(144, 238, 144, 0.3)'}  # Hijau transparan
+                            ],
+                            'threshold': {
+                                'line': {'color': "red", 'width': 4},
+                                'thickness': 0.75,
+                                'value': 20
                             }
-                        ))
+                        }
+                    ))
 
-                        # Tambahkan teks keterangan nilai BTU
-                        reserve_text = f"{abs(remaining_reserves):,.0f} T BTU"
-                        if remaining_reserves < 0:
-                            reserve_text = f"-{reserve_text} (Defisit)"
-                            text_color = "red"
-                        else:
-                            text_color = "black"
+                    # Tambahkan teks keterangan nilai BTU
+                    reserve_text = f"{abs(remaining_reserves):,.0f} T BTU"
+                    if remaining_reserves < 0:
+                        reserve_text = f"-{reserve_text} (Defisit)"
+                        text_color = "red"
+                    else:
+                        text_color = "black"
 
+                    gauge_fig.add_annotation(
+                        x=0.5, y=0.25,
+                        text=reserve_text,
+                        font={'size': 16, 'color': text_color},
+                        showarrow=False
+                    )
+
+                    # Tambahkan teks estimasi tahun habis
+                    if percentage_remaining <= 0:
                         gauge_fig.add_annotation(
-                            x=0.5, y=0.25,
-                            text=reserve_text,
-                            font={'size': 16, 'color': text_color},
+                            x=0.5, y=0.15,
+                            text=f"Cadangan Habis Sekitar Tahun {depletion_year:.1f}!",
+                            font={'size': 14, 'color': 'red'},
+                            showarrow=False
+                        )
+                    elif np.isinf(depletion_year):
+                        gauge_fig.add_annotation(
+                            x=0.5, y=0.15,
+                            text="Laju produksi sangat rendah",
+                            font={'size': 14},
+                            showarrow=False
+                        )
+                    else:
+                        years_until_depletion = depletion_year - datetime.now().year
+                        gauge_fig.add_annotation(
+                            x=0.5, y=0.15,
+                            text=f"Estimasi habis: {depletion_year:.1f} (≈ {years_until_depletion:.1f} tahun lagi)",
+                            font={'size': 14, 'color': 'red' if years_until_depletion < 50 else 'black'},
                             showarrow=False
                         )
 
-                        # Tambahkan teks estimasi tahun habis
-                        if percentage_remaining <= 0:
-                            gauge_fig.add_annotation(
-                                x=0.5, y=0.15,
-                                text=f"Cadangan Habis Sekitar Tahun {depletion_year:.1f}!",
-                                font={'size': 14, 'color': 'red'},
-                                showarrow=False
-                            )
-                        elif np.isinf(depletion_year):
-                            gauge_fig.add_annotation(
-                                x=0.5, y=0.15,
-                                text="Laju produksi sangat rendah",
-                                font={'size': 14},
-                                showarrow=False
-                            )
-                        else:
-                            years_until_depletion = depletion_year - datetime.now().year
-                            gauge_fig.add_annotation(
-                                x=0.5, y=0.15,
-                                text=f"Estimasi habis: {depletion_year:.1f} (≈ {years_until_depletion:.1f} tahun lagi)",
-                                font={'size': 14, 'color': 'red' if years_until_depletion < 50 else 'black'},
-                                showarrow=False
-                            )
+                    # Layout
+                    gauge_fig.update_layout(
+                        height=400,
+                        margin=dict(l=20, r=20, t=60, b=20),
+                        paper_bgcolor="white",
+                        font={'color': "darkblue", 'family': "Arial"}
+                    )
 
-                        # Layout
-                        gauge_fig.update_layout(
-                            height=400,
-                            margin=dict(l=20, r=20, t=60, b=20),
-                            paper_bgcolor="white",
-                            font={'color': "darkblue", 'family': "Arial"}
-                        )
+                    st.plotly_chart(gauge_fig, use_container_width=True)
 
-                        st.plotly_chart(gauge_fig, use_container_width=True)
-
-                # Tambah tabel ringkasan (opsional, bisa dihide secara default)
-                with st.expander("Tabel Data Prediksi", expanded=False):
-                    yearly_future = future_df.resample('Y').mean().reset_index()
-                    yearly_future["Tahun"] = yearly_future["Tahun"].dt.year
-                    yearly_future = yearly_future.rename(columns={"Tahun": "Tahun", "Produksi": "Produksi (rata-rata)"})
-                    st.dataframe(yearly_future, use_container_width=True)
+            # Tambah tabel ringkasan (opsional, bisa dihide secara default)
+            with st.expander("Tabel Data Prediksi", expanded=False):
+                yearly_future = future_df.resample('Y').mean().reset_index()
+                yearly_future["Tahun"] = yearly_future["Tahun"].dt.year
+                yearly_future = yearly_future.rename(columns={"Tahun": "Tahun", "Produksi": "Produksi (rata-rata)"})
+                st.dataframe(yearly_future, use_container_width=True)
 
 except FileNotFoundError:
-    st.error(f"File model atau data tidak ditemukan untuk energi {energy_type}.")
-    st.info("Pastikan semua file model dan data tersedia di folder 'materials'.")
+st.error(f"File model atau data tidak ditemukan untuk energi {energy_type}.")
+st.info("Pastikan semua file model dan data tersedia di folder 'materials'.")
 except Exception as e:
-    st.error(f"Terjadi kesalahan: {str(e)}")
-    st.info("Coba pilih jenis energi lain atau sesuaikan parameter prediksi.")
+st.error(f"Terjadi kesalahan: {str(e)}")
+st.info("Coba pilih jenis energi lain atau sesuaikan parameter prediksi.")
 
 # --- FOOTER ---
 st.markdown('<div class="footer">', unsafe_allow_html=True)
