@@ -801,20 +801,15 @@ try:
                         else:
                             text_color = "#808080"  # Abu-abu
                         
-                        # Label persentase - posisi lebih rendah, lebih dekat dengan numerik
+                        # Gunakan pendekatan HTML untuk menampilkan dua label bersama-sama dengan jarak yang sangat dekat
                         gauge_fig.add_annotation(
-                            x=0.5, y=0.50,  # Posisi lebih dekat lagi dengan label nilai
-                            text=f"{max(0, display_value):.1f}%",
-                            font={'size': 26, 'color': gauge_color, 'family': 'Arial, sans-serif', 'weight': 'bold'},
-                            showarrow=False
-                        )
-                        
-                        # Label nilai numerik - posisi tetap
-                        gauge_fig.add_annotation(
-                            x=0.5, y=0.42,  # Posisi lebih rendah untuk memisahkan dari label persentase
-                            text=reserve_text,
-                            font={'size': 22, 'color': text_color, 'family': 'Arial, sans-serif', 'weight': 'bold'},
-                            showarrow=False
+                            x=0.5, y=0.45,
+                            text=f"<span style='font-size:26px; color:{gauge_color}'>{max(0, display_value):.1f}%</span><br><span style='font-size:22px; color:{text_color}; margin-top:-10px'>{reserve_text}</span>",
+                            font={'family': 'Arial, sans-serif'},
+                            showarrow=False,
+                            align="center",
+                            valign="middle",
+                            height=60  # Membuat tinggi anotasi lebih kecil untuk mendekatkan teks
                         )
                         
                         # Layout yang lebih menarik dan konsisten dengan visualisasi prediksi
