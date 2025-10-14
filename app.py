@@ -798,6 +798,14 @@ try:
                             }
                         ))
                         
+                        # Tambahkan teks keterangan nilai numerik (tanpa T BTU)
+                        reserve_text = f"{abs(remaining_reserves):,.0f}"
+                        if remaining_reserves < 0:
+                            reserve_text = f"-{reserve_text}"  # Hanya tambahkan tanda minus jika negatif
+                            text_color = "red"
+                        else:
+                            text_color = "#808080"  # Abu-abu
+                        
                         # Perbaikan pada warna label persentase juga
                         gauge_color = '#4CAF50' if percentage_remaining > 50 else (
                                       '#FFA000' if percentage_remaining > 20 else 'red')
