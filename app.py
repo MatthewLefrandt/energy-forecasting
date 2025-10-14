@@ -379,110 +379,6 @@ def calculate_replacement_proportion(renewable_df, fossil_df, target_year, energ
         print(f"Error in calculate_replacement_proportion: {e}")
         return 0, 0, 0
 
-# --- VISUALIZATION OF REPLACEMENT PROPORTION ---
-def visualize_replacement_proportion(renewable_df, fossil_df, target_year, energy_type, fossil_type):
-    """
-    Create visualization for renewable energy replacement proportion.
-
-    Args:
-        renewable_df (DataFrame): Biodiesel or Fuel Ethanol production data
-        fossil_df (DataFrame): Distillate Fuel Oil or Motor Gasoline production data
-        target_year (int): Target year for calculation
-        energy_type (str): "Biodiesel" or "Fuel Ethanol"
-        fossil_type (str): "Distillate Fuel Oil" or "Motor Gasoline"
-
-    Returns:
-        plotly.graph_objects.Figure: Plotly figure object
-    """
-    proportion, renewable_value, fossil_value = calculate_replacement_proportion(
-        renewable_df, fossil_df, target_year, energy_type
-    )
-
-    # Colors consistent with existing scheme
-    renewable_color = ENERGY_COLORS.get(energy_type, '#33691E')
-    fossil_color = "#FF6F00"  # Similar to petroleum color
-
-    # Create figure with two subplots
-    fig = make_subplots(
-        rows=1, cols=2,
-        specs=[[{"type": "indicator"}, {"type": "pie"}]],
-        column_widths=[0.5, 0.5],
-        subplot_titles=(f"Proporsi Penggantian {fossil_type}", f"Perbandingan Produksi Energi ({target_year})")
-    )
-
-    # Add gauge indicator
-    fig.add_trace(
-        go.Indicator(
-            mode="gauge+number",
-            value=min(proportion, 100),  # Cap at 100% for gauge
-            domain={'x': [0, 1], 'y': [0, 1]},
-            title={'text': f"<b>Persentase Penggantian</b>", 'font': {'size': 18, 'color': '#808080'}},
-            gauge={
-                'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "#808080"},
-                'bar': {'color': renewable_color},
-                'bgcolor': 'rgba(255, 255, 255, 0)',
-                'borderwidth': 0,
-                'steps': [
-                    {'range': [0, 25], 'color': 'rgba(255, 105, 97, 0.2)'},
-                    {'range': [25, 50], 'color': 'rgba(255, 179, 71, 0.2)'},
-                    {'range': [50, 75], 'color': 'rgba(167, 201, 87, 0.2)'},
-                    {'range': [75, 100], 'color': 'rgba(97, 177, 90, 0.2)'}
-                ],
-                'threshold': {
-                    'line': {'color': "green", 'width': 2},
-                    'thickness': 0.8,
-                    'value': 50
-                }
-            },
-            number={'suffix': '%', 'font': {'size': 24, 'color': '#808080'}}
-        ),
-        row=1, col=1
-    )
-
-    # Add pie chart comparison
-    labels = [energy_type, fossil_type]
-    values = [renewable_value, max(0, fossil_value - renewable_value)]
-
-    fig.add_trace(
-        go.Pie(
-            labels=labels,
-            values=values,
-            hole=0.4,
-            marker=dict(
-                colors=[renewable_color, fossil_color],
-                line=dict(color='#FFF', width=1)
-            ),
-            textinfo="label+percent",
-            insidetextorientation="radial",
-            textfont=dict(size=14, color='#FFF'),
-            hoverinfo="label+value+percent",
-            textposition="inside"
-        ),
-        row=1, col=2
-    )
-
-    # Update layout
-    fig.update_layout(
-        height=450,
-        margin=dict(l=20, r=20, t=50, b=20),
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        font={'color': "#808080", 'family': "Arial, sans-serif"},
-        showlegend=False,
-        annotations=[
-            dict(
-                x=0.5, y=-0.15,
-                xref="x domain", yref="y domain",
-                text=f"<b>{energy_type}</b> dapat menggantikan {proportion:.1f}% dari kebutuhan <b>{fossil_type}</b> pada tahun {target_year}",
-                showarrow=False,
-                font=dict(size=14, color="#808080")
-            )
-        ]
-    )
-
-    return fig
-
-# --- ENERGY ICONS AND COLORS ---
 # --- ENERGY ICONS AND COLORS ---
 ENERGY_ICONS = {
     "Batu Bara": "🪨",
@@ -603,6 +499,26 @@ try:
                                     delta_color="normal" if growth >= 0 else "inverse"
                                 )
 
+                            # Calculate replacement proportion for metrics
+                            proportion, renewable_value, fossil_value = calculate_replacement_proportion(
+                                future_df, diesel_df, target_year, "Biodiesel"
+                            )
+
+                            # Add replacement metrics in right column
+                            metrics_col1, metrics_col2 = st.columns(2)
+                            with metrics_col1:
+                                st.metric(
+                                    "Produksi Biodiesel", 
+                                    f"{renewable_value:,.2f} T BTU", 
+                                    f"Tahun {target_year}"
+                                )
+                            with metrics_col2:
+                                st.metric(
+                                    "Kebutuhan Diesel", 
+                                    f"{fossil_value:,.2f} T BTU", 
+                                    f"Tahun {target_year}"
+                                )
+
                 # Visualisasi
                 with col1:
                     st.markdown("### Visualisasi Prediksi")
@@ -690,32 +606,55 @@ try:
                     # Visualisasi Potensi Penggantian Bahan Bakar Diesel
                     st.markdown("### Potensi Penggantian Bahan Bakar Diesel")
 
-                    # Create replacement visualization
-                    replacement_fig = visualize_replacement_proportion(
-                        future_df, diesel_df, target_year, "Biodiesel", "Distillate Fuel Oil"
-                    )
-
-                    # Display the visualization
-                    st.plotly_chart(replacement_fig, use_container_width=True)
-
-                    # Add detailed metrics
+                    # Create pie chart visualization only (no gauge)
                     proportion, renewable_value, fossil_value = calculate_replacement_proportion(
                         future_df, diesel_df, target_year, "Biodiesel"
                     )
 
-                    metrics_col1, metrics_col2 = st.columns(2)
-                    with metrics_col1:
-                        st.metric(
-                            "Produksi Biodiesel", 
-                            f"{renewable_value:,.2f} T BTU", 
-                            f"Tahun {target_year}"
+                    # Colors
+                    renewable_color = ENERGY_COLORS.get(energy_type, '#33691E')
+                    fossil_color = "#FF6F00"  # Similar to petroleum color
+
+                    # Create pie chart only
+                    replacement_fig = go.Figure()
+
+                    # Add pie chart
+                    labels = [energy_type, "Distillate Fuel Oil"]
+                    values = [renewable_value, max(0, fossil_value - renewable_value)]
+
+                    replacement_fig.add_trace(
+                        go.Pie(
+                            labels=labels,
+                            values=values,
+                            hole=0.4,
+                            marker=dict(
+                                colors=[renewable_color, fossil_color],
+                                line=dict(color='#FFF', width=1)
+                            ),
+                            textinfo="label+percent",
+                            insidetextorientation="radial",
+                            textfont=dict(size=14, color='#FFF'),
+                            hoverinfo="label+value+percent",
+                            textposition="inside"
                         )
-                    with metrics_col2:
-                        st.metric(
-                            "Kebutuhan Diesel", 
-                            f"{fossil_value:,.2f} T BTU", 
-                            f"Tahun {target_year}"
-                        )
+                    )
+
+                    # Update layout
+                    replacement_fig.update_layout(
+                        height=450,
+                        margin=dict(l=20, r=20, t=50, b=20),
+                        paper_bgcolor="rgba(0,0,0,0)",
+                        plot_bgcolor="rgba(0,0,0,0)",
+                        font={'color': "#808080", 'family': "Arial, sans-serif"},
+                        showlegend=False,
+                        title={
+                            'text': f"Perbandingan Produksi Energi ({target_year})",
+                            'font': {'size': 18, 'color': '#808080'}
+                        }
+                    )
+
+                    # Display the visualization
+                    st.plotly_chart(replacement_fig, use_container_width=True)
 
                     # Add explanatory text
                     st.info(f"""
@@ -775,8 +714,28 @@ try:
                                 delta_color="normal" if growth >= 0 else "inverse"
                             )
 
+                        # For Fuel Ethanol, add replacement metrics in right column
+                        if energy_type == "Fuel Ethanol":
+                            proportion, renewable_value, fossil_value = calculate_replacement_proportion(
+                                future_df, gasoline_df, target_year, "Fuel Ethanol"
+                            )
+
+                            metrics_col1, metrics_col2 = st.columns(2)
+                            with metrics_col1:
+                                st.metric(
+                                    "Produksi Fuel Ethanol", 
+                                    f"{renewable_value:,.2f} T BTU", 
+                                    f"Tahun {target_year}"
+                                )
+                            with metrics_col2:
+                                st.metric(
+                                    "Kebutuhan Bensin", 
+                                    f"{fossil_value:,.2f} T BTU", 
+                                    f"Tahun {target_year}"
+                                )
+
                         # Tambahkan metrik cadangan tersisa untuk batu bara, gas alam, dan minyak bumi
-                        if energy_type in ["Batu Bara", "Gas Alam", "Minyak Bumi"]:
+                        elif energy_type in ["Batu Bara", "Gas Alam", "Minyak Bumi"]:
                             st.markdown("### Estimasi Cadangan")
 
                             # Hitung cadangan tersisa
@@ -941,7 +900,7 @@ try:
 
                 st.plotly_chart(fig, use_container_width=True)
 
-                # Tampilkan visualisasi cadangan tersisa jika energi fosil
+                # Visualisasi untuk setiap jenis energi
                 if energy_type in ["Batu Bara", "Gas Alam", "Minyak Bumi"]:
                     # Hitung cadangan tersisa
                     remaining_reserves, depletion_year, percentage_remaining = calculate_remaining_reserves(
@@ -1025,7 +984,7 @@ try:
 
                         # Perbaikan pada warna label persentase juga
                         gauge_color = '#4CAF50' if percentage_remaining > 50 else (
-                                      '#FFA000' if percentage_remaining > 20 else 'red')
+                                    '#FFA000' if percentage_remaining > 20 else 'red')
 
                         # Perbarui label persentase dengan warna yang benar
                         gauge_fig.add_annotation(
@@ -1073,45 +1032,83 @@ try:
                             ),
                             hoverinfo="text",
                             hovertext=f"<b>Detail Cadangan {energy_type}</b><br>" +
-                                     f"Total cadangan awal: {ENERGY_RESERVES[energy_type]:,.0f}<br>" +
-                                     f"Cadangan tersisa: {reserve_text}<br>" +
-                                     f"Persentase tersisa: {max(0, percentage_remaining):.1f}%",
+                                    f"Total cadangan awal: {ENERGY_RESERVES[energy_type]:,.0f}<br>" +
+                                    f"Cadangan tersisa: {reserve_text}<br>" +
+                                    f"Persentase tersisa: {max(0, percentage_remaining):.1f}%",
                             showlegend=False
                         ))
 
                         # Tampilkan chart
                         st.plotly_chart(gauge_fig, use_container_width=True, config={'displayModeBar': False})
 
-                # Untuk Fuel Ethanol, tampilkan visualisasi penggantian Motor Gasoline
+                        # Tambahkan interpretasi untuk energi fosil
+                        if percentage_remaining > 0:
+                            st.info(f"""
+                            **Interpretasi:**
+                            - Cadangan {energy_type} diperkirakan tersisa sekitar {percentage_remaining:.1f}% pada tahun {target_year}.
+                            - Dengan tingkat konsumsi saat ini, cadangan diperkirakan akan habis sekitar tahun {int(depletion_year)}.
+                            - Total cadangan tersisa sebesar {abs(remaining_reserves):,.0f} T BTU dari total {ENERGY_RESERVES[energy_type]:,.0f} T BTU.
+                            """)
+                        else:
+                            st.error(f"""
+                            **Interpretasi:**
+                            - Cadangan {energy_type} diperkirakan sudah habis pada tahun {int(depletion_year)}, sebelum target prediksi tahun {target_year}.
+                            - Diperlukan penemuan cadangan baru atau pengurangan konsumsi untuk mencegah kelangkaan.
+                            """)
+
                 elif energy_type == "Fuel Ethanol":
+                    # Visualisasi Potensi Penggantian Bahan Bakar Bensin (hanya pie chart)
                     st.markdown("### Potensi Penggantian Bahan Bakar Bensin")
 
-                    # Create replacement visualization
-                    replacement_fig = visualize_replacement_proportion(
-                        future_df, gasoline_df, target_year, "Fuel Ethanol", "Motor Gasoline"
-                    )
-
-                    # Display the visualization
-                    st.plotly_chart(replacement_fig, use_container_width=True)
-
-                    # Add detailed metrics
+                    # Calculate proportion
                     proportion, renewable_value, fossil_value = calculate_replacement_proportion(
                         future_df, gasoline_df, target_year, "Fuel Ethanol"
                     )
 
-                    metrics_col1, metrics_col2 = st.columns(2)
-                    with metrics_col1:
-                        st.metric(
-                            "Produksi Fuel Ethanol", 
-                            f"{renewable_value:,.2f} T BTU", 
-                            f"Tahun {target_year}"
+                    # Colors
+                    renewable_color = ENERGY_COLORS.get(energy_type, '#8D6E63')
+                    fossil_color = "#FF6F00"  # Similar to petroleum color
+
+                    # Create pie chart only
+                    replacement_fig = go.Figure()
+
+                    # Add pie chart
+                    labels = ["Fuel Ethanol", "Motor Gasoline"]
+                    values = [renewable_value, max(0, fossil_value - renewable_value)]
+
+                    replacement_fig.add_trace(
+                        go.Pie(
+                            labels=labels,
+                            values=values,
+                            hole=0.4,
+                            marker=dict(
+                                colors=[renewable_color, fossil_color],
+                                line=dict(color='#FFF', width=1)
+                            ),
+                            textinfo="label+percent",
+                            insidetextorientation="radial",
+                            textfont=dict(size=14, color='#FFF'),
+                            hoverinfo="label+value+percent",
+                            textposition="inside"
                         )
-                    with metrics_col2:
-                        st.metric(
-                            "Kebutuhan Bensin", 
-                            f"{fossil_value:,.2f} T BTU", 
-                            f"Tahun {target_year}"
-                        )
+                    )
+
+                    # Update layout
+                    replacement_fig.update_layout(
+                        height=450,
+                        margin=dict(l=20, r=20, t=50, b=20),
+                        paper_bgcolor="rgba(0,0,0,0)",
+                        plot_bgcolor="rgba(0,0,0,0)",
+                        font={'color': "#808080", 'family': "Arial, sans-serif"},
+                        showlegend=False,
+                        title={
+                            'text': f"Perbandingan Produksi Energi ({target_year})",
+                            'font': {'size': 18, 'color': '#808080'}
+                        }
+                    )
+
+                    # Display the visualization
+                    st.plotly_chart(replacement_fig, use_container_width=True)
 
                     # Add explanatory text
                     st.info(f"""
