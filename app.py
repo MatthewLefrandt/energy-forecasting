@@ -777,9 +777,9 @@ try:
                                     'showticklabels': True  # Tetap tampilkan label
                                 },
                                 'bar': {
-                                    # Gunakan warna hijau cerah untuk bar progres
-                                    'color': '#4CAF50' if percentage_remaining > 20 else (
-                                             '#FFA000' if percentage_remaining > 0 else 'red'), 
+                                    # Gunakan warna berdasarkan persentase
+                                    'color': '#4CAF50' if percentage_remaining > 50 else (
+                                            '#FFA000' if percentage_remaining > 20 else 'red'), 
                                     'thickness': 0.7
                                 },
                                 'bgcolor': 'rgba(255, 255, 255, 0)',  # Sepenuhnya transparan
@@ -787,7 +787,7 @@ try:
                                 'bordercolor': "rgba(0,0,0,0)",  # Transparan
                                 'steps': [
                                     {'range': [0, 20], 'color': 'rgba(255, 99, 71, 0.25)'},  # Merah sangat transparan
-                                    {'range': [20, 50], 'color': 'rgba(255, 165, 0, 0.25)'},  # Oranye sangat transparan
+                                    {'range': [20, 50], 'color': 'rgba(255, 165, 0, 0.25)'},  # Oranye/Kuning sangat transparan 
                                     {'range': [50, 100], 'color': 'rgba(144, 238, 144, 0.25)'}  # Hijau sangat transparan
                                 ],
                                 'threshold': {
@@ -798,21 +798,13 @@ try:
                             }
                         ))
                         
-                        # Tambahkan teks keterangan nilai numerik (tanpa T BTU)
-                        reserve_text = f"{abs(remaining_reserves):,.0f}"
-                        if remaining_reserves < 0:
-                            reserve_text = f"-{reserve_text}"  # Hanya tambahkan tanda minus jika negatif
-                            text_color = "red"
-                        else:
-                            text_color = "#808080"  # Abu-abu
+                        # Perbaikan pada warna label persentase juga
+                        gauge_color = '#4CAF50' if percentage_remaining > 50 else (
+                                      '#FFA000' if percentage_remaining > 20 else 'red')
                         
-                        # Gunakan warna hijau cerah juga untuk label persentase
-                        gauge_color = '#4CAF50' if percentage_remaining > 20 else (
-                                      '#FFA000' if percentage_remaining > 0 else 'red')
-                        
-                        # Tampilkan label persentase
+                        # Perbarui label persentase dengan warna yang benar
                         gauge_fig.add_annotation(
-                            x=0.5, y=0.43,  # Posisi label persentase
+                            x=0.5, y=0.43,
                             text=f"{max(0, display_value):.1f}%",
                             font={'size': 64, 'color': gauge_color, 'family': 'Arial, sans-serif', 'weight': 'bold'},
                             showarrow=False,
