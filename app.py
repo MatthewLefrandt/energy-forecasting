@@ -509,13 +509,13 @@ try:
                             with metrics_col1:
                                 st.metric(
                                     "Produksi Biodiesel", 
-                                    f"{renewable_value:,.2f} T BTU", 
+                                    f"{renewable_value:,.2f}", 
                                     f"Tahun {target_year}"
                                 )
                             with metrics_col2:
                                 st.metric(
                                     "Kebutuhan Diesel", 
-                                    f"{fossil_value:,.2f} T BTU", 
+                                    f"{fossil_value:,.2f}", 
                                     f"Tahun {target_year}"
                                 )
 
@@ -724,13 +724,13 @@ try:
                             with metrics_col1:
                                 st.metric(
                                     "Produksi Fuel Ethanol", 
-                                    f"{renewable_value:,.2f} T BTU", 
+                                    f"{renewable_value:,.2f}", 
                                     f"Tahun {target_year}"
                                 )
                             with metrics_col2:
                                 st.metric(
                                     "Kebutuhan Bensin", 
-                                    f"{fossil_value:,.2f} T BTU", 
+                                    f"{fossil_value:,.2f}", 
                                     f"Tahun {target_year}"
                                 )
 
