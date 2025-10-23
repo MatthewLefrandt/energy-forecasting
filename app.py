@@ -47,94 +47,63 @@ st.markdown("""
         font-size: 0.8rem;
         border-top: 1px solid #e0e0e0;
     }
-    .popup-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.7);
-        z-index: 1000;
+    .welcome-screen {
         display: flex;
-        justify-content: center;
+        flex-direction: column;
         align-items: center;
-    }
-    .popup-content {
-        background-color: white;
-        padding: 30px;
-        border-radius: 10px;
-        max-width: 500px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        justify-content: center;
+        height: 100vh;
+        background-color: rgba(255, 255, 255, 0.95);
+        padding: 2rem;
         text-align: center;
     }
-    .popup-title {
+    .welcome-card {
+        background-color: white;
+        border-radius: 20px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        padding: 40px;
+        max-width: 600px;
+        width: 100%;
+    }
+    .welcome-icon {
+        font-size: 60px;
+        margin-bottom: 20px;
+    }
+    .welcome-title {
         color: #1E88E5;
-        font-size: 22px;
-        margin-bottom: 15px;
+        font-size: 28px;
         font-weight: bold;
+        margin-bottom: 20px;
     }
-    .popup-text {
+    .welcome-text {
         color: #424242;
-        font-size: 16px;
-        line-height: 1.5;
-        margin-bottom: 25px;
+        font-size: 18px;
+        line-height: 1.6;
+        margin-bottom: 30px;
     }
-    .popup-btn {
+    .welcome-button {
         background-color: #1E88E5;
         color: white;
-        border: none;
-        padding: 10px 25px;
-        border-radius: 5px;
-        cursor: pointer;
-        font-size: 16px;
+        padding: 12px 30px;
+        font-size: 18px;
         font-weight: bold;
-        transition: background-color 0.3s;
+        border: none;
+        border-radius: 50px;
+        cursor: pointer;
+        margin-top: 10px;
+        transition: all 0.3s;
     }
-    .popup-btn:hover {
+    .welcome-button:hover {
         background-color: #1565C0;
-    }
-    .popup-icon {
-        font-size: 48px;
-        margin-bottom: 15px;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
     }
 </style>
 """, unsafe_allow_html=True)
 
-# --- WELCOME POPUP ---
-if 'show_popup' not in st.session_state:
-    st.session_state.show_popup = True
-
-if st.session_state.show_popup:
-    popup_html = """
-    <div class="popup-overlay" id="welcome-popup">
-        <div class="popup-content">
-            <div class="popup-icon">🔍✨</div>
-            <div class="popup-title">Selamat Datang di Aplikasi Prediksi Energi</div>
-            <p class="popup-text">
-                Untuk pengalaman terbaik dalam menjelajahi visualisasi data kami, 
-                kami merekomendasikan untuk:<br><br>
-                • Mengatur zoom browser ke <b>70%</b><br>
-                • Menggunakan mode terang (Light Mode)<br><br>
-                Pengaturan ini akan membantu Anda melihat detail grafik dan 
-                perbandingan data dengan lebih optimal.
-            </p>
-            <button onclick="document.getElementById('welcome-popup').style.display='none';" class="popup-btn">
-                Mengerti, Lanjutkan
-            </button>
-        </div>
-    </div>
-    <script>
-        // Menutup popup saat tombol diklik
-        document.querySelector('.popup-btn').addEventListener('click', function() {
-            document.getElementById('welcome-popup').style.display = 'none';
-        });
-    </script>
-    """
-    st.markdown(popup_html, unsafe_allow_html=True)
-
-    if st.button('Mengerti, Lanjutkan', key='close_popup'):
-        st.session_state.show_popup = False
-        st.experimental_rerun()
+# Inisialisasi session state untuk mengontrol tampilan welcome screen
+if 'show_welcome' not in st.session_state:
+    st.session_state.show_welcome = True
 
 # --- PATHS ---
 DATA_PATH = "materials/Combined_modelling.xlsx"
@@ -165,7 +134,6 @@ ENERGY_RESERVES = {
 }
 
 # --- LOAD DATA ---
-@st.cache_data
 @st.cache_data
 def load_data(energy_type):
     """Load dan filter data berdasarkan jenis energi."""
@@ -483,160 +451,498 @@ ENERGY_COLORS = {
     "Fuel Ethanol": "#8D6E63"
 }
 
-# --- HEADER ---
-st.markdown('<h1 class="main-header">Prediksi Produksi Energi</h1>', unsafe_allow_html=True)
-st.markdown('<p class="sub-header">Visualisasi dan prediksi produksi energi berdasarkan model machine learning</p>', unsafe_allow_html=True)
+# --- WELCOME SCREEN ---
+def show_welcome_screen():
+    st.markdown("""
+    <div class="welcome-screen">
+        <div class="welcome-card">
+            <div class="welcome-icon">🔍✨</div>
+            <div class="welcome-title">Selamat Datang di Aplikasi Prediksi Energi</div>
+            <div class="welcome-text">
+                Untuk pengalaman terbaik dalam menjelajahi visualisasi data kami, 
+                kami merekomendasikan untuk:<br><br>
+                • Mengatur zoom browser ke <b>70%</b><br>
+                • Menggunakan mode terang (Light Mode)<br><br>
+                Pengaturan ini akan membantu Anda melihat detail grafik dan 
+                perbandingan data dengan lebih optimal.
+            </div>
+            <button id="continue-btn" class="welcome-button" onclick="hideWelcome()">Mengerti, Lanjutkan</button>
+        </div>
+    </div>
 
-# --- SIDEBAR ---
-with st.sidebar:
-    st.markdown("### Parameter Prediksi")
+    <script>
+        function hideWelcome() {
+            // Memanggil callback Streamlit untuk mengupdate session state
+            window.parent.postMessage({
+                type: "streamlit:setComponentValue",
+                value: true
+            }, "*");
+        }
 
-    energy_type = st.selectbox(
-        "Jenis Energi",
-        options=list(MODEL_PATHS.keys()),
-        format_func=lambda x: f"{ENERGY_ICONS.get(x, '⚡')} {x}"
-    )
+        // Menambahkan event listener untuk tombol
+        document.getElementById("continue-btn").addEventListener("click", function() {
+            hideWelcome();
+        });
+    </script>
+    """, unsafe_allow_html=True)
 
-    min_year = 2025
-    max_year = 2100  # Diubah dari 2050 menjadi 2100
-    default_year = 2030
+    # Tambahkan tombol Streamlit standar sebagai fallback jika JavaScript tidak berfungsi
+    if st.button("Mengerti, Lanjutkan", key="welcome_button"):
+        st.session_state.show_welcome = False
+        st.experimental_rerun()
 
-    target_year = st.slider(
-        "Tahun Prediksi", 
-        min_value=min_year, 
-        max_value=max_year, 
-        value=default_year,
-        step=1,
-        help="Pilih tahun untuk memprediksi produksi energi hingga 2100"
-    )
+# --- MAIN APP ---
+def show_main_app():
+    # --- HEADER ---
+    st.markdown('<h1 class="main-header">Prediksi Produksi Energi</h1>', unsafe_allow_html=True)
+    st.markdown('<p class="sub-header">Visualisasi dan prediksi produksi energi berdasarkan model machine learning</p>', unsafe_allow_html=True)
 
-    # Tambahkan peringatan untuk prediksi jangka sangat panjang
-    if target_year > 2050:
-        st.sidebar.warning(f"Prediksi hingga tahun {target_year} merupakan ekstrapolasi jangka sangat panjang. Hasilnya mungkin kurang akurat.")
+    # --- SIDEBAR ---
+    with st.sidebar:
+        st.markdown("### Parameter Prediksi")
 
-    st.markdown("---")
-    st.markdown(f"### {ENERGY_ICONS.get(energy_type, '⚡')} {energy_type}")
+        energy_type = st.selectbox(
+            "Jenis Energi",
+            options=list(MODEL_PATHS.keys()),
+            format_func=lambda x: f"{ENERGY_ICONS.get(x, '⚡')} {x}"
+        )
 
-    energy_descriptions = {
-        "Batu Bara": "Sumber energi fosil padat yang terbentuk dari sisa tumbuhan yang terkompresi.",
-        "Gas Alam": "Sumber energi fosil berbentuk gas yang terdiri dari campuran hidrokarbon.",
-        "Minyak Bumi": "Sumber energi fosil cair yang terbentuk dari sisa-sisa organisme laut.",
-        "Biodiesel": "Bahan bakar terbarukan yang dibuat dari minyak nabati atau lemak hewan.",
-        "Fuel Ethanol": "Bahan bakar alkohol yang diproduksi dari fermentasi tanaman."
-    }
+        min_year = 2025
+        max_year = 2100  # Diubah dari 2050 menjadi 2100
+        default_year = 2030
 
-    st.info(energy_descriptions.get(energy_type, ""))
+        target_year = st.slider(
+            "Tahun Prediksi", 
+            min_value=min_year, 
+            max_value=max_year, 
+            value=default_year,
+            step=1,
+            help="Pilih tahun untuk memprediksi produksi energi hingga 2100"
+        )
 
-# --- MAIN CONTENT ---
-try:
-    # Load model dan data
-    model = joblib.load(MODEL_PATHS[energy_type])
-    scaler = joblib.load(SCALER_PATHS[energy_type])
-    df = load_data(energy_type)
+        # Tambahkan peringatan untuk prediksi jangka sangat panjang
+        if target_year > 2050:
+            st.sidebar.warning(f"Prediksi hingga tahun {target_year} merupakan ekstrapolasi jangka sangat panjang. Hasilnya mungkin kurang akurat.")
 
-    # Load diesel and gasoline data for renewables comparison
-    diesel_df, gasoline_df = load_replacement_data()
+        st.markdown("---")
+        st.markdown(f"### {ENERGY_ICONS.get(energy_type, '⚡')} {energy_type}")
 
-    # Layout columns
-    col1, col2 = st.columns([2, 1])
+        energy_descriptions = {
+            "Batu Bara": "Sumber energi fosil padat yang terbentuk dari sisa tumbuhan yang terkompresi.",
+            "Gas Alam": "Sumber energi fosil berbentuk gas yang terdiri dari campuran hidrokarbon.",
+            "Minyak Bumi": "Sumber energi fosil cair yang terbentuk dari sisa-sisa organisme laut.",
+            "Biodiesel": "Bahan bakar terbarukan yang dibuat dari minyak nabati atau lemak hewan.",
+            "Fuel Ethanol": "Bahan bakar alkohol yang diproduksi dari fermentasi tanaman."
+        }
 
-    # Jalankan prediksi
-    if energy_type == "Biodiesel":
-        if df.empty:
-            st.error("Data tidak cukup untuk melakukan prediksi.")
+        st.info(energy_descriptions.get(energy_type, ""))
+
+    # --- MAIN CONTENT ---
+    try:
+        # Load model dan data
+        model = joblib.load(MODEL_PATHS[energy_type])
+        scaler = joblib.load(SCALER_PATHS[energy_type])
+        df = load_data(energy_type)
+
+        # Load diesel and gasoline data for renewables comparison
+        diesel_df, gasoline_df = load_replacement_data()
+
+        # Layout columns
+        col1, col2 = st.columns([2, 1])
+
+        # Jalankan prediksi
+        if energy_type == "Biodiesel":
+            if df.empty:
+                st.error("Data tidak cukup untuk melakukan prediksi.")
+            else:
+                df["Lag_1"] = df["Produksi"].shift(1)
+                df = df.dropna()
+
+                if not df.empty:
+                    future_df = forecast_production_biodiesel(target_year, model, scaler, df)
+
+                    # Tampilkan hasil
+                    with col2:
+                        st.markdown(f"### Hasil Prediksi {target_year}")
+
+                        if target_year in future_df.index:
+                            year_prediction = future_df.loc[target_year, "Produksi"]
+                            if isinstance(year_prediction, pd.Series):
+                                year_prediction = year_prediction.iloc[0]
+
+                            if not pd.isnull(year_prediction):
+                                st.markdown('<div class="prediction-card">', unsafe_allow_html=True)
+                                st.markdown(f"<p>Produksi {energy_type} Tahun {target_year}:</p>", unsafe_allow_html=True)
+                                st.markdown(f'<p class="prediction-value">{year_prediction:.2f}</p>', unsafe_allow_html=True)
+                                st.markdown('</div>', unsafe_allow_html=True)
+
+                                # Data ringkasan
+                                st.markdown("### Ringkasan Data")
+                                last_actual = df["Produksi"].iloc[-1]
+                                growth = ((year_prediction - last_actual) / last_actual) * 100
+
+                                metrics_col1, metrics_col2 = st.columns(2)
+                                with metrics_col1:
+                                    st.metric(
+                                        "Data Terakhir", 
+                                        f"{last_actual:.2f}", 
+                                        f"Tahun {df.index[-1]}"
+                                    )
+                                with metrics_col2:
+                                    st.metric(
+                                        "Pertumbuhan", 
+                                        f"{growth:.2f}%", 
+                                        f"Dari {df.index[-1]} ke {target_year}",
+                                        delta_color="normal" if growth >= 0 else "inverse"
+                                    )
+
+                                # Calculate replacement proportion for metrics
+                                proportion, renewable_value, fossil_value = calculate_replacement_proportion(
+                                    future_df, diesel_df, target_year, "Biodiesel"
+                                )
+
+                                # Add replacement metrics in right column
+                                metrics_col1, metrics_col2 = st.columns(2)
+                                with metrics_col1:
+                                    st.metric(
+                                        "Produksi Biodiesel", 
+                                        f"{renewable_value:,.2f}", 
+                                        f"Tahun {target_year}"
+                                    )
+                                with metrics_col2:
+                                    st.metric(
+                                        "Kebutuhan Diesel", 
+                                        f"{fossil_value:,.2f}", 
+                                        f"Tahun {target_year}"
+                                    )
+
+                    # Visualisasi
+                    with col1:
+                        st.markdown("### Visualisasi Prediksi")
+
+                        # Gunakan Plotly untuk visualisasi interaktif
+                        fig = go.Figure()
+
+                        # Data historis
+                        fig.add_trace(go.Scatter(
+                            x=list(df.index), 
+                            y=df["Produksi"].tolist(),
+                            mode='lines+markers',
+                            name='Data Historis',
+                            line=dict(color=ENERGY_COLORS.get(energy_type, '#1E88E5'), width=2),
+                            marker=dict(size=6)
+                        ))
+
+                        # Data prediksi
+                        if not future_df.empty:
+                            fig.add_trace(go.Scatter(
+                                x=list(future_df.index), 
+                                y=future_df["Produksi"].tolist(),
+                                mode='lines+markers',
+                                name='Prediksi',
+                                line=dict(color='#FF5252', width=2, dash='dash'),
+                                marker=dict(size=6, symbol='diamond')
+                            ))
+
+                        # Garis vertikal pemisah (perbaikan untuk issue tanggal)
+                        fig.add_vline(
+                            x=df.index[-1], 
+                            line_width=1, 
+                            line_dash="dash", 
+                            line_color="gray"
+                        )
+
+                        # Tambahkan anotasi terpisah
+                        fig.add_annotation(
+                            x=df.index[-1],
+                            y=df["Produksi"].max(),
+                            text="Mulai Prediksi",
+                            showarrow=True,
+                            arrowhead=1,
+                            ax=40,
+                            ay=-40
+                        )
+
+                        # Layout
+                        fig.update_layout(
+                            title=dict(
+                                text=f"Produksi {energy_type} (Historis dan Prediksi)",
+                                font=dict(color='#808080', size=20)  # Abu-abu
+                            ),
+                            xaxis=dict(
+                                showgrid=False,
+                                gridcolor='rgba(0,0,0,0)',
+                                tickfont=dict(color='#808080', size=14),  # Abu-abu
+                                title_font=dict(color='#808080', size=16),  # Abu-abu
+                                title_text="Tahun"
+                            ),
+                            yaxis=dict(
+                                showgrid=False,
+                                gridcolor='rgba(0,0,0,0)',
+                                tickfont=dict(color='#808080', size=14),  # Abu-abu
+                                title_font=dict(color='#808080', size=16),  # Abu-abu
+                                title_text="Produksi"
+                            ),
+                            plot_bgcolor='rgba(0,0,0,0)',
+                            paper_bgcolor='rgba(0,0,0,0)',
+                            height=500,
+                            hovermode="x unified",
+                            legend=dict(
+                                orientation="h",
+                                yanchor="bottom",
+                                y=1.02,
+                                xanchor="right",
+                                x=1,
+                                font=dict(color="#808080")  # Abu-abu
+                            ),
+                            font=dict(family="Arial, sans-serif", color="#808080")  # Abu-abu
+                        )
+
+                        st.plotly_chart(fig, use_container_width=True)
+
+                        # Visualisasi Potensi Penggantian Bahan Bakar Diesel
+                        st.markdown("### Potensi Penggantian Bahan Bakar Diesel")
+
+                        # Create pie chart visualization only (no gauge)
+                        proportion, renewable_value, fossil_value = calculate_replacement_proportion(
+                            future_df, diesel_df, target_year, "Biodiesel"
+                        )
+
+                        # Colors
+                        renewable_color = ENERGY_COLORS.get(energy_type, '#33691E')
+                        fossil_color = "#FF6F00"  # Similar to petroleum color
+
+                        # Create pie chart only
+                        replacement_fig = go.Figure()
+
+                        # Add pie chart
+                        labels = [energy_type, "Distillate Fuel Oil"]
+                        values = [renewable_value, max(0, fossil_value - renewable_value)]
+
+                        replacement_fig.add_trace(
+                            go.Pie(
+                                labels=labels,
+                                values=values,
+                                hole=0.4,
+                                marker=dict(
+                                    colors=[renewable_color, fossil_color],
+                                    line=dict(color='#FFF', width=1)
+                                ),
+                                textinfo="label+percent",
+                                insidetextorientation="radial",
+                                textfont=dict(size=14, color='#FFF'),
+                                hoverinfo="label+value+percent",
+                                textposition="inside"
+                            )
+                        )
+
+                        # Update layout
+                        replacement_fig.update_layout(
+                            height=450,
+                            margin=dict(l=20, r=20, t=50, b=20),
+                            paper_bgcolor="rgba(0,0,0,0)",
+                            plot_bgcolor="rgba(0,0,0,0)",
+                            font={'color': "#808080", 'family': "Arial, sans-serif"},
+                            showlegend=False,
+                            title={
+                                'text': f"Perbandingan Produksi Energi ({target_year})",
+                                'font': {'size': 18, 'color': '#808080'}
+                            }
+                        )
+
+                        # Display the visualization
+                        st.plotly_chart(replacement_fig, use_container_width=True)
+
+                        # Add explanatory text
+                        st.info(f"""
+                        **Interpretasi:**
+                        - Biodiesel dapat memenuhi sekitar {proportion:.1f}% dari kebutuhan Distillate Fuel Oil (diesel) pada tahun {target_year}.
+                        - Untuk mencapai penggantian 100%, diperlukan peningkatan produksi biodiesel sebesar {(fossil_value - renewable_value):,.2f} T BTU.
+                        """)
+
+                        # Tambahkan tabel ringkasan
+                        with st.expander("Tabel Data Prediksi", expanded=False):
+                            future_table = future_df.reset_index()
+                            future_table.columns = ["Tahun", "Produksi"]
+                            st.dataframe(future_table, use_container_width=True)
         else:
-            df["Lag_1"] = df["Produksi"].shift(1)
-            df = df.dropna()
+            # Prediksi untuk model SVR (data bulanan)
+            future_df = forecast_production_svr(target_year, model, scaler, df)
 
-            if not df.empty:
-                future_df = forecast_production_biodiesel(target_year, model, scaler, df)
+            # Tampilkan hasil
+            with col2:
+                st.markdown(f"### Hasil Prediksi {target_year}")
 
-                # Tampilkan hasil
-                with col2:
-                    st.markdown(f"### Hasil Prediksi {target_year}")
+                try:
+                    december_prediction = future_df.loc[f"{target_year}-12", "Produksi"]
+                    if isinstance(december_prediction, pd.Series):
+                        december_prediction = december_prediction.iloc[0]
 
-                    if target_year in future_df.index:
-                        year_prediction = future_df.loc[target_year, "Produksi"]
-                        if isinstance(year_prediction, pd.Series):
-                            year_prediction = year_prediction.iloc[0]
+                    if not pd.isnull(december_prediction):
+                        st.markdown('<div class="prediction-card">', unsafe_allow_html=True)
+                        st.markdown(f"<p>Produksi {energy_type} Desember {target_year}:</p>", unsafe_allow_html=True)
+                        st.markdown(f'<p class="prediction-value">{december_prediction:.2f}</p>', unsafe_allow_html=True)
+                        st.markdown('</div>', unsafe_allow_html=True)
 
-                        if not pd.isnull(year_prediction):
-                            st.markdown('<div class="prediction-card">', unsafe_allow_html=True)
-                            st.markdown(f"<p>Produksi {energy_type} Tahun {target_year}:</p>", unsafe_allow_html=True)
-                            st.markdown(f'<p class="prediction-value">{year_prediction:.2f}</p>', unsafe_allow_html=True)
-                            st.markdown('</div>', unsafe_allow_html=True)
+                        # Data ringkasan
+                        st.markdown("### Ringkasan Data")
 
-                            # Data ringkasan
-                            st.markdown("### Ringkasan Data")
-                            last_actual = df["Produksi"].iloc[-1]
-                            growth = ((year_prediction - last_actual) / last_actual) * 100
+                        # Ambil data terakhir (Desember dari tahun terakhir data)
+                        last_year_data = df[df.index.year == df.index.year.max()]
+                        if not last_year_data.empty:
+                            last_actual = last_year_data["Produksi"].iloc[-1]
+                            last_date = last_year_data.index[-1]
+
+                            # Hitung pertumbuhan
+                            growth = ((december_prediction - last_actual) / last_actual) * 100
 
                             metrics_col1, metrics_col2 = st.columns(2)
                             with metrics_col1:
                                 st.metric(
                                     "Data Terakhir", 
                                     f"{last_actual:.2f}", 
-                                    f"Tahun {df.index[-1]}"
+                                    f"{last_date.strftime('%b %Y')}"
                                 )
                             with metrics_col2:
                                 st.metric(
                                     "Pertumbuhan", 
                                     f"{growth:.2f}%", 
-                                    f"Dari {df.index[-1]} ke {target_year}",
+                                    f"Dari {last_date.strftime('%b %Y')} ke Des {target_year}",
                                     delta_color="normal" if growth >= 0 else "inverse"
                                 )
 
-                            # Calculate replacement proportion for metrics
-                            proportion, renewable_value, fossil_value = calculate_replacement_proportion(
-                                future_df, diesel_df, target_year, "Biodiesel"
-                            )
-
-                            # Add replacement metrics in right column
-                            metrics_col1, metrics_col2 = st.columns(2)
-                            with metrics_col1:
-                                st.metric(
-                                    "Produksi Biodiesel", 
-                                    f"{renewable_value:,.2f}", 
-                                    f"Tahun {target_year}"
-                                )
-                            with metrics_col2:
-                                st.metric(
-                                    "Kebutuhan Diesel", 
-                                    f"{fossil_value:,.2f}", 
-                                    f"Tahun {target_year}"
+                            # For Fuel Ethanol, add replacement metrics in right column
+                            if energy_type == "Fuel Ethanol":
+                                proportion, renewable_value, fossil_value = calculate_replacement_proportion(
+                                    future_df, gasoline_df, target_year, "Fuel Ethanol"
                                 )
 
-                # Visualisasi
-                with col1:
-                    st.markdown("### Visualisasi Prediksi")
+                                metrics_col1, metrics_col2 = st.columns(2)
+                                with metrics_col1:
+                                    st.metric(
+                                        "Produksi Fuel Ethanol", 
+                                        f"{renewable_value:,.2f}", 
+                                        f"Tahun {target_year}"
+                                    )
+                                with metrics_col2:
+                                    st.metric(
+                                        "Kebutuhan Bensin", 
+                                        f"{fossil_value:,.2f}", 
+                                        f"Tahun {target_year}"
+                                    )
 
-                    # Gunakan Plotly untuk visualisasi interaktif
-                    fig = go.Figure()
+                            # Tambahkan metrik cadangan tersisa untuk batu bara, gas alam, dan minyak bumi
+                            elif energy_type in ["Batu Bara", "Gas Alam", "Minyak Bumi"]:
+                                st.markdown("### Estimasi Cadangan")
 
-                    # Data historis
+                                # Hitung cadangan tersisa
+                                remaining_reserves, depletion_year, percentage_remaining = calculate_remaining_reserves(
+                                    energy_type, df, future_df, target_year
+                                )
+
+                                if remaining_reserves is not None:
+                                    metrics_col1, metrics_col2 = st.columns(2)
+                                    # Bagian metrik cadangan tersisa
+                                    with metrics_col1:
+                                        # Warna metrik berdasarkan sisa cadangan
+                                        # "normal" -> hijau jika positif
+                                        # "inverse" -> merah jika negatif
+                                        delta_color = "normal" if percentage_remaining > 0 else "inverse"
+
+                                        display_value = f"{abs(remaining_reserves):,.2f}"
+                                        if remaining_reserves < 0:
+                                            display_value = f"-{display_value}"
+
+                                        st.metric(
+                                            "Cadangan Tersisa", 
+                                            display_value, 
+                                            f"{percentage_remaining:.1f}% dari total",
+                                            delta_color=delta_color
+                                        )
+
+                except (KeyError, Exception) as e:
+                    st.warning(f"Tidak ada hasil prediksi untuk Desember {target_year}.")
+
+            # Visualisasi
+            with col1:
+                st.markdown("### Visualisasi Prediksi")
+
+                # Gunakan Plotly untuk visualisasi interaktif
+                fig = go.Figure()
+
+                # Agregasi data bulanan ke format tahunan untuk visualisasi yang lebih bersih
+                yearly_df = df.resample('Y').mean()
+
+                # Data historis (dengan resampling tahunan untuk visualisasi)
+                fig.add_trace(go.Scatter(
+                    x=yearly_df.index, 
+                    y=yearly_df["Produksi"],
+                    mode='lines+markers',
+                    name='Data Historis (Rata-rata Tahunan)',
+                    line=dict(color=ENERGY_COLORS.get(energy_type, '#1E88E5'), width=2),
+                    marker=dict(size=8)
+                ))
+
+                # Data mentah (optional, bisa dimatikan dengan parameter visible=False)
+                fig.add_trace(go.Scatter(
+                    x=df.index, 
+                    y=df["Produksi"],
+                    mode='lines',
+                    name='Data Historis (Bulanan)',
+                    line=dict(color=ENERGY_COLORS.get(energy_type, '#1E88E5'), width=1, dash='dot'),
+                    opacity=0.3,
+                    visible='legendonly'  # Sembunyikan secara default, bisa ditampilkan dari legend
+                ))
+
+                # Agregasi data prediksi ke tahunan
+                if not future_df.empty:
+                    future_yearly = future_df.resample('Y').mean()
+
+                    # Data prediksi (tahunan)
                     fig.add_trace(go.Scatter(
-                        x=list(df.index), 
-                        y=df["Produksi"].tolist(),
+                        x=future_yearly.index, 
+                        y=future_yearly["Produksi"],
                         mode='lines+markers',
-                        name='Data Historis',
-                        line=dict(color=ENERGY_COLORS.get(energy_type, '#1E88E5'), width=2),
-                        marker=dict(size=6)
+                        name='Prediksi (Rata-rata Tahunan)',
+                        line=dict(color='#FF5252', width=2),
+                        marker=dict(size=8, symbol='diamond')
                     ))
 
-                    # Data prediksi
-                    if not future_df.empty:
+                    # Data prediksi (bulanan, optional)
+                    fig.add_trace(go.Scatter(
+                        x=future_df.index, 
+                        y=future_df["Produksi"],
+                        mode='lines',
+                        name='Prediksi (Bulanan)',
+                        line=dict(color='#FF5252', width=1, dash='dot'),
+                        opacity=0.3,
+                        visible='legendonly'  # Sembunyikan secara default
+                    ))
+
+                    # Highlight khusus untuk bulan Desember tahun target
+                    target_date = pd.to_datetime(f"{target_year}-12-01")
+                    if target_date in future_df.index:
                         fig.add_trace(go.Scatter(
-                            x=list(future_df.index), 
-                            y=future_df["Produksi"].tolist(),
-                            mode='lines+markers',
-                            name='Prediksi',
-                            line=dict(color='#FF5252', width=2, dash='dash'),
-                            marker=dict(size=6, symbol='diamond')
+                            x=[target_date],
+                            y=[future_df.loc[target_date, "Produksi"]],
+                            mode='markers',
+                            name=f'Prediksi Des {target_year}',
+                            marker=dict(
+                                color='#FF5252',
+                                size=12,
+                                symbol='star',
+                                line=dict(color='#FF5252', width=2)
+                            )
                         ))
 
-                    # Garis vertikal pemisah (perbaikan untuk issue tanggal)
+                    # Garis vertikal pemisah dengan perbaikan
+                    # Gunakan pendekatan alternatif untuk menghindari error tanggal
+                    last_year = df.index.year.max()
+                    first_pred_year = last_year + 1
+                    first_pred_date = f"{first_pred_year}-01-01"
+
                     fig.add_vline(
-                        x=df.index[-1], 
+                        x=pd.to_datetime(first_pred_date), 
                         line_width=1, 
                         line_dash="dash", 
                         line_color="gray"
@@ -644,13 +950,14 @@ try:
 
                     # Tambahkan anotasi terpisah
                     fig.add_annotation(
-                        x=df.index[-1],
-                        y=df["Produksi"].max(),
+                        x=pd.to_datetime(first_pred_date),
+                        y=df["Produksi"].mean() * 1.2,  # Posisikan di atas rata-rata
                         text="Mulai Prediksi",
                         showarrow=True,
                         arrowhead=1,
                         ax=40,
-                        ay=-40
+                        ay=-40,
+                        font=dict(color="#808080")  # Abu-abu
                     )
 
                     # Layout
@@ -690,535 +997,255 @@ try:
 
                     st.plotly_chart(fig, use_container_width=True)
 
-                    # Visualisasi Potensi Penggantian Bahan Bakar Diesel
-                    st.markdown("### Potensi Penggantian Bahan Bakar Diesel")
-
-                    # Create pie chart visualization only (no gauge)
-                    proportion, renewable_value, fossil_value = calculate_replacement_proportion(
-                        future_df, diesel_df, target_year, "Biodiesel"
-                    )
-
-                    # Colors
-                    renewable_color = ENERGY_COLORS.get(energy_type, '#33691E')
-                    fossil_color = "#FF6F00"  # Similar to petroleum color
-
-                    # Create pie chart only
-                    replacement_fig = go.Figure()
-
-                    # Add pie chart
-                    labels = [energy_type, "Distillate Fuel Oil"]
-                    values = [renewable_value, max(0, fossil_value - renewable_value)]
-
-                    replacement_fig.add_trace(
-                        go.Pie(
-                            labels=labels,
-                            values=values,
-                            hole=0.4,
-                            marker=dict(
-                                colors=[renewable_color, fossil_color],
-                                line=dict(color='#FFF', width=1)
-                            ),
-                            textinfo="label+percent",
-                            insidetextorientation="radial",
-                            textfont=dict(size=14, color='#FFF'),
-                            hoverinfo="label+value+percent",
-                            textposition="inside"
+                    # Visualisasi untuk setiap jenis energi
+                    if energy_type in ["Batu Bara", "Gas Alam", "Minyak Bumi"]:
+                        # Hitung cadangan tersisa
+                        remaining_reserves, depletion_year, percentage_remaining = calculate_remaining_reserves(
+                            energy_type, df, future_df, target_year
                         )
-                    )
 
-                    # Update layout
-                    replacement_fig.update_layout(
-                        height=450,
-                        margin=dict(l=20, r=20, t=50, b=20),
-                        paper_bgcolor="rgba(0,0,0,0)",
-                        plot_bgcolor="rgba(0,0,0,0)",
-                        font={'color': "#808080", 'family': "Arial, sans-serif"},
-                        showlegend=False,
-                        title={
-                            'text': f"Perbandingan Produksi Energi ({target_year})",
-                            'font': {'size': 18, 'color': '#808080'}
-                        }
-                    )
+                        if remaining_reserves is not None:
+                            st.markdown("### Visualisasi Cadangan Tersisa")
 
-                    # Display the visualization
-                    st.plotly_chart(replacement_fig, use_container_width=True)
+                            # Warna berdasarkan persentase tersisa
+                            if percentage_remaining <= 0:
+                                gauge_color = "red"
+                                display_value = 0  # Minimum untuk gauge
+                            elif percentage_remaining < 20:
+                                gauge_color = "red"
+                                display_value = percentage_remaining
+                            elif percentage_remaining < 50:
+                                gauge_color = "orange"
+                                display_value = percentage_remaining
+                            else:
+                                gauge_color = ENERGY_COLORS.get(energy_type, '#1E88E5')
+                                display_value = percentage_remaining
 
-                    # Add explanatory text
-                    st.info(f"""
-                    **Interpretasi:**
-                    - Biodiesel dapat memenuhi sekitar {proportion:.1f}% dari kebutuhan Distillate Fuel Oil (diesel) pada tahun {target_year}.
-                    - Untuk mencapai penggantian 100%, diperlukan peningkatan produksi biodiesel sebesar {(fossil_value - renewable_value):,.2f} T BTU.
-                    """)
-
-                    # Tambahkan tabel ringkasan
-                    with st.expander("Tabel Data Prediksi", expanded=False):
-                        future_table = future_df.reset_index()
-                        future_table.columns = ["Tahun", "Produksi"]
-                        st.dataframe(future_table, use_container_width=True)
-    else:
-        # Prediksi untuk model SVR (data bulanan)
-        future_df = forecast_production_svr(target_year, model, scaler, df)
-
-        # Tampilkan hasil
-        with col2:
-            st.markdown(f"### Hasil Prediksi {target_year}")
-
-            try:
-                december_prediction = future_df.loc[f"{target_year}-12", "Produksi"]
-                if isinstance(december_prediction, pd.Series):
-                    december_prediction = december_prediction.iloc[0]
-
-                if not pd.isnull(december_prediction):
-                    st.markdown('<div class="prediction-card">', unsafe_allow_html=True)
-                    st.markdown(f"<p>Produksi {energy_type} Desember {target_year}:</p>", unsafe_allow_html=True)
-                    st.markdown(f'<p class="prediction-value">{december_prediction:.2f}</p>', unsafe_allow_html=True)
-                    st.markdown('</div>', unsafe_allow_html=True)
-
-                    # Data ringkasan
-                    st.markdown("### Ringkasan Data")
-
-                    # Ambil data terakhir (Desember dari tahun terakhir data)
-                    last_year_data = df[df.index.year == df.index.year.max()]
-                    if not last_year_data.empty:
-                        last_actual = last_year_data["Produksi"].iloc[-1]
-                        last_date = last_year_data.index[-1]
-
-                        # Hitung pertumbuhan
-                        growth = ((december_prediction - last_actual) / last_actual) * 100
-
-                        metrics_col1, metrics_col2 = st.columns(2)
-                        with metrics_col1:
-                            st.metric(
-                                "Data Terakhir", 
-                                f"{last_actual:.2f}", 
-                                f"{last_date.strftime('%b %Y')}"
-                            )
-                        with metrics_col2:
-                            st.metric(
-                                "Pertumbuhan", 
-                                f"{growth:.2f}%", 
-                                f"Dari {last_date.strftime('%b %Y')} ke Des {target_year}",
-                                delta_color="normal" if growth >= 0 else "inverse"
-                            )
-
-                        # For Fuel Ethanol, add replacement metrics in right column
-                        if energy_type == "Fuel Ethanol":
-                            proportion, renewable_value, fossil_value = calculate_replacement_proportion(
-                                future_df, gasoline_df, target_year, "Fuel Ethanol"
-                            )
-
-                            metrics_col1, metrics_col2 = st.columns(2)
-                            with metrics_col1:
-                                st.metric(
-                                    "Produksi Fuel Ethanol", 
-                                    f"{renewable_value:,.2f}", 
-                                    f"Tahun {target_year}"
-                                )
-                            with metrics_col2:
-                                st.metric(
-                                    "Kebutuhan Bensin", 
-                                    f"{fossil_value:,.2f}", 
-                                    f"Tahun {target_year}"
-                                )
-
-                        # Tambahkan metrik cadangan tersisa untuk batu bara, gas alam, dan minyak bumi
-                        elif energy_type in ["Batu Bara", "Gas Alam", "Minyak Bumi"]:
-                            st.markdown("### Estimasi Cadangan")
-
-                            # Hitung cadangan tersisa
-                            remaining_reserves, depletion_year, percentage_remaining = calculate_remaining_reserves(
-                                energy_type, df, future_df, target_year
-                            )
-
-                            if remaining_reserves is not None:
-                                metrics_col1, metrics_col2 = st.columns(2)
-                                # Bagian metrik cadangan tersisa
-                                with metrics_col1:
-                                    # Warna metrik berdasarkan sisa cadangan
-                                    # "normal" -> hijau jika positif
-                                    # "inverse" -> merah jika negatif
-                                    delta_color = "normal" if percentage_remaining > 0 else "inverse"
-
-                                    display_value = f"{abs(remaining_reserves):,.2f}"
-                                    if remaining_reserves < 0:
-                                        display_value = f"-{display_value}"
-
-                                    st.metric(
-                                        "Cadangan Tersisa", 
-                                        display_value, 
-                                        f"{percentage_remaining:.1f}% dari total",
-                                        delta_color=delta_color
-                                    )
-
-            except (KeyError, Exception) as e:
-                st.warning(f"Tidak ada hasil prediksi untuk Desember {target_year}.")
-
-        # Visualisasi
-        with col1:
-            st.markdown("### Visualisasi Prediksi")
-
-            # Gunakan Plotly untuk visualisasi interaktif
-            fig = go.Figure()
-
-            # Agregasi data bulanan ke format tahunan untuk visualisasi yang lebih bersih
-            yearly_df = df.resample('Y').mean()
-
-            # Data historis (dengan resampling tahunan untuk visualisasi)
-            fig.add_trace(go.Scatter(
-                x=yearly_df.index, 
-                y=yearly_df["Produksi"],
-                mode='lines+markers',
-                name='Data Historis (Rata-rata Tahunan)',
-                line=dict(color=ENERGY_COLORS.get(energy_type, '#1E88E5'), width=2),
-                marker=dict(size=8)
-            ))
-
-            # Data mentah (optional, bisa dimatikan dengan parameter visible=False)
-            fig.add_trace(go.Scatter(
-                x=df.index, 
-                y=df["Produksi"],
-                mode='lines',
-                name='Data Historis (Bulanan)',
-                line=dict(color=ENERGY_COLORS.get(energy_type, '#1E88E5'), width=1, dash='dot'),
-                opacity=0.3,
-                visible='legendonly'  # Sembunyikan secara default, bisa ditampilkan dari legend
-            ))
-
-            # Agregasi data prediksi ke tahunan
-            if not future_df.empty:
-                future_yearly = future_df.resample('Y').mean()
-
-                # Data prediksi (tahunan)
-                fig.add_trace(go.Scatter(
-                    x=future_yearly.index, 
-                    y=future_yearly["Produksi"],
-                    mode='lines+markers',
-                    name='Prediksi (Rata-rata Tahunan)',
-                    line=dict(color='#FF5252', width=2),
-                    marker=dict(size=8, symbol='diamond')
-                ))
-
-                # Data prediksi (bulanan, optional)
-                fig.add_trace(go.Scatter(
-                    x=future_df.index, 
-                    y=future_df["Produksi"],
-                    mode='lines',
-                    name='Prediksi (Bulanan)',
-                    line=dict(color='#FF5252', width=1, dash='dot'),
-                    opacity=0.3,
-                    visible='legendonly'  # Sembunyikan secara default
-                ))
-
-                # Highlight khusus untuk bulan Desember tahun target
-                target_date = pd.to_datetime(f"{target_year}-12-01")
-                if target_date in future_df.index:
-                    fig.add_trace(go.Scatter(
-                        x=[target_date],
-                        y=[future_df.loc[target_date, "Produksi"]],
-                        mode='markers',
-                        name=f'Prediksi Des {target_year}',
-                        marker=dict(
-                            color='#FF5252',
-                            size=12,
-                            symbol='star',
-                            line=dict(color='#FF5252', width=2)
-                        )
-                    ))
-
-                # Garis vertikal pemisah dengan perbaikan
-                # Gunakan pendekatan alternatif untuk menghindari error tanggal
-                last_year = df.index.year.max()
-                first_pred_year = last_year + 1
-                first_pred_date = f"{first_pred_year}-01-01"
-
-                fig.add_vline(
-                    x=pd.to_datetime(first_pred_date), 
-                    line_width=1, 
-                    line_dash="dash", 
-                    line_color="gray"
-                )
-
-                # Tambahkan anotasi terpisah
-                fig.add_annotation(
-                    x=pd.to_datetime(first_pred_date),
-                    y=df["Produksi"].mean() * 1.2,  # Posisikan di atas rata-rata
-                    text="Mulai Prediksi",
-                    showarrow=True,
-                    arrowhead=1,
-                    ax=40,
-                    ay=-40,
-                    font=dict(color="#808080")  # Abu-abu
-                )
-
-                # Layout
-                fig.update_layout(
-                    title=dict(
-                        text=f"Produksi {energy_type} (Historis dan Prediksi)",
-                        font=dict(color='#808080', size=20)  # Abu-abu
-                    ),
-                    xaxis=dict(
-                        showgrid=False,
-                        gridcolor='rgba(0,0,0,0)',
-                        tickfont=dict(color='#808080', size=14),  # Abu-abu
-                        title_font=dict(color='#808080', size=16),  # Abu-abu
-                        title_text="Tahun"
-                    ),
-                    yaxis=dict(
-                        showgrid=False,
-                        gridcolor='rgba(0,0,0,0)',
-                        tickfont=dict(color='#808080', size=14),  # Abu-abu
-                        title_font=dict(color='#808080', size=16),  # Abu-abu
-                        title_text="Produksi"
-                    ),
-                    plot_bgcolor='rgba(0,0,0,0)',
-                    paper_bgcolor='rgba(0,0,0,0)',
-                    height=500,
-                    hovermode="x unified",
-                    legend=dict(
-                        orientation="h",
-                        yanchor="bottom",
-                        y=1.02,
-                        xanchor="right",
-                        x=1,
-                        font=dict(color="#808080")  # Abu-abu
-                    ),
-                    font=dict(family="Arial, sans-serif", color="#808080")  # Abu-abu
-                )
-
-                st.plotly_chart(fig, use_container_width=True)
-
-                # Visualisasi untuk setiap jenis energi
-                if energy_type in ["Batu Bara", "Gas Alam", "Minyak Bumi"]:
-                    # Hitung cadangan tersisa
-                    remaining_reserves, depletion_year, percentage_remaining = calculate_remaining_reserves(
-                        energy_type, df, future_df, target_year
-                    )
-
-                    if remaining_reserves is not None:
-                        st.markdown("### Visualisasi Cadangan Tersisa")
-
-                        # Warna berdasarkan persentase tersisa
-                        if percentage_remaining <= 0:
-                            gauge_color = "red"
-                            display_value = 0  # Minimum untuk gauge
-                        elif percentage_remaining < 20:
-                            gauge_color = "red"
-                            display_value = percentage_remaining
-                        elif percentage_remaining < 50:
-                            gauge_color = "orange"
-                            display_value = percentage_remaining
-                        else:
-                            gauge_color = ENERGY_COLORS.get(energy_type, '#1E88E5')
-                            display_value = percentage_remaining
-
-                        # Warna delta pada gauge selalu merah untuk persentase negatif
-                        delta_properties = {
-                            'reference': 100, 
-                            'decreasing': {'color': "red"}, 
-                            'suffix': '%',
-                            'font': {'size': 16}
-                        }
-                        if percentage_remaining < 0:
-                            delta_properties['valueformat'] = '.1f'  # Format untuk nilai negatif
-                            delta_properties['decreasing']['color'] = "red"
-
-                        # Buat speedometer chart dengan Plotly yang lebih menarik dan interaktif
-                        gauge_fig = go.Figure(go.Indicator(
-                            mode="gauge",  # Hanya tampilkan gauge, tanpa label bawaan
-                            value=max(0, display_value),  # Pastikan tidak negatif untuk gauge
-                            domain={'x': [0, 1], 'y': [0, 1]},
-                            title={
-                                'text': f"<b>Cadangan {energy_type} Tersisa</b>", 
-                                'font': {'size': 24, 'family': 'Arial, sans-serif', 'color': '#808080'}  # Abu-abu
-                            },
-                            gauge={
-                                'axis': {
-                                    'range': [0, 100], 
-                                    'tickwidth': 1, 
-                                    'tickcolor': "rgba(0,0,0,0)",  # Warna tick yang transparan
-                                    'tickfont': {'size': 14, 'color': '#808080'},  # Abu-abu
-                                    'showticklabels': True  # Tetap tampilkan label
-                                },
-                                'bar': {
-                                    # Gunakan warna berdasarkan persentase
-                                    'color': '#4CAF50' if percentage_remaining > 50 else (
-                                            '#FFA000' if percentage_remaining > 20 else 'red'), 
-                                    'thickness': 0.7
-                                },
-                                'bgcolor': 'rgba(255, 255, 255, 0)',  # Sepenuhnya transparan
-                                'borderwidth': 0,  # Tanpa border
-                                'bordercolor': "rgba(0,0,0,0)",  # Transparan
-                                'steps': [
-                                    {'range': [0, 20], 'color': 'rgba(255, 99, 71, 0.25)'},  # Merah sangat transparan
-                                    {'range': [20, 50], 'color': 'rgba(255, 165, 0, 0.25)'},  # Oranye/Kuning sangat transparan 
-                                    {'range': [50, 100], 'color': 'rgba(144, 238, 144, 0.25)'}  # Hijau sangat transparan
-                                ],
-                                'threshold': {
-                                    'line': {'color': "red", 'width': 3},
-                                    'thickness': 0.8,
-                                    'value': 20
-                                }
+                            # Warna delta pada gauge selalu merah untuk persentase negatif
+                            delta_properties = {
+                                'reference': 100, 
+                                'decreasing': {'color': "red"}, 
+                                'suffix': '%',
+                                'font': {'size': 16}
                             }
-                        ))
+                            if percentage_remaining < 0:
+                                delta_properties['valueformat'] = '.1f'  # Format untuk nilai negatif
+                                delta_properties['decreasing']['color'] = "red"
 
-                        # Tambahkan teks keterangan nilai numerik (tanpa T BTU)
-                        reserve_text = f"{abs(remaining_reserves):,.0f}"
-                        if remaining_reserves < 0:
-                            reserve_text = f"-{reserve_text}"  # Hanya tambahkan tanda minus jika negatif
-                            text_color = "red"
-                        else:
-                            text_color = "#808080"  # Abu-abu
+                            # Buat speedometer chart dengan Plotly yang lebih menarik dan interaktif
+                            gauge_fig = go.Figure(go.Indicator(
+                                mode="gauge",  # Hanya tampilkan gauge, tanpa label bawaan
+                                value=max(0, display_value),  # Pastikan tidak negatif untuk gauge
+                                domain={'x': [0, 1], 'y': [0, 1]},
+                                title={
+                                    'text': f"<b>Cadangan {energy_type} Tersisa</b>", 
+                                    'font': {'size': 24, 'family': 'Arial, sans-serif', 'color': '#808080'}  # Abu-abu
+                                },
+                                gauge={
+                                    'axis': {
+                                        'range': [0, 100], 
+                                        'tickwidth': 1, 
+                                        'tickcolor': "rgba(0,0,0,0)",  # Warna tick yang transparan
+                                        'tickfont': {'size': 14, 'color': '#808080'},  # Abu-abu
+                                        'showticklabels': True  # Tetap tampilkan label
+                                    },
+                                    'bar': {
+                                        # Gunakan warna berdasarkan persentase
+                                        'color': '#4CAF50' if percentage_remaining > 50 else (
+                                                '#FFA000' if percentage_remaining > 20 else 'red'), 
+                                        'thickness': 0.7
+                                    },
+                                    'bgcolor': 'rgba(255, 255, 255, 0)',  # Sepenuhnya transparan
+                                    'borderwidth': 0,  # Tanpa border
+                                    'bordercolor': "rgba(0,0,0,0)",  # Transparan
+                                    'steps': [
+                                        {'range': [0, 20], 'color': 'rgba(255, 99, 71, 0.25)'},  # Merah sangat transparan
+                                        {'range': [20, 50], 'color': 'rgba(255, 165, 0, 0.25)'},  # Oranye/Kuning sangat transparan 
+                                        {'range': [50, 100], 'color': 'rgba(144, 238, 144, 0.25)'}  # Hijau sangat transparan
+                                    ],
+                                    'threshold': {
+                                        'line': {'color': "red", 'width': 3},
+                                        'thickness': 0.8,
+                                        'value': 20
+                                    }
+                                }
+                            ))
 
-                        # Perbaikan pada warna label persentase juga
-                        gauge_color = '#4CAF50' if percentage_remaining > 50 else (
-                                    '#FFA000' if percentage_remaining > 20 else 'red')
+                            # Tambahkan teks keterangan nilai numerik (tanpa T BTU)
+                            reserve_text = f"{abs(remaining_reserves):,.0f}"
+                            if remaining_reserves < 0:
+                                reserve_text = f"-{reserve_text}"  # Hanya tambahkan tanda minus jika negatif
+                                text_color = "red"
+                            else:
+                                text_color = "#808080"  # Abu-abu
 
-                        # Perbarui label persentase dengan warna yang benar
-                        gauge_fig.add_annotation(
-                            x=0.5, y=0.43,
-                            text=f"{max(0, display_value):.1f}%",
-                            font={'size': 64, 'color': gauge_color, 'family': 'Arial, sans-serif', 'weight': 'bold'},
-                            showarrow=False,
-                            align="center"
+                            # Perbaikan pada warna label persentase juga
+                            gauge_color = '#4CAF50' if percentage_remaining > 50 else (
+                                        '#FFA000' if percentage_remaining > 20 else 'red')
+
+                            # Perbarui label persentase dengan warna yang benar
+                            gauge_fig.add_annotation(
+                                x=0.5, y=0.43,
+                                text=f"{max(0, display_value):.1f}%",
+                                font={'size': 64, 'color': gauge_color, 'family': 'Arial, sans-serif', 'weight': 'bold'},
+                                showarrow=False,
+                                align="center"
+                            )
+
+                            # Tampilkan label nilai numerik dengan jarak yang sesuai
+                            gauge_fig.add_annotation(
+                                x=0.5, y=0.40,  # Jarak yang lebih dekat dengan persentase
+                                text=reserve_text,
+                                font={'size': 22, 'color': text_color, 'family': 'Arial, sans-serif', 'weight': 'bold'},
+                                showarrow=False,
+                                align="center"
+                            )
+
+                            # Layout yang lebih menarik dan konsisten dengan visualisasi prediksi
+                            gauge_fig.update_layout(
+                                height=450,
+                                margin=dict(l=20, r=20, t=60, b=20),
+                                paper_bgcolor="rgba(0,0,0,0)",  # Paper background transparan
+                                plot_bgcolor="rgba(0,0,0,0)",   # Plot background transparan
+                                font={'color': "#808080", 'family': "Arial, sans-serif"},  # Abu-abu
+                                template="plotly_white",
+                                hovermode="closest",
+                                hoverlabel=dict(
+                                    bgcolor="white",
+                                    font_size=14,
+                                    font_family="Arial, sans-serif"
+                                ),
+                                showlegend=False
+                            )
+
+                            # Tambahkan interaktivitas melalui tooltip kustom
+                            gauge_fig.add_trace(go.Scatter(
+                                x=[0.5],
+                                y=[0.5],
+                                mode="markers",
+                                marker=dict(
+                                    size=1,
+                                    color="rgba(0,0,0,0)"
+                                ),
+                                hoverinfo="text",
+                                hovertext=f"<b>Detail Cadangan {energy_type}</b><br>" +
+                                        f"Total cadangan awal: {ENERGY_RESERVES[energy_type]:,.0f}<br>" +
+                                        f"Cadangan tersisa: {reserve_text}<br>" +
+                                        f"Persentase tersisa: {max(0, percentage_remaining):.1f}%",
+                                showlegend=False
+                            ))
+
+                            # Tampilkan chart
+                            st.plotly_chart(gauge_fig, use_container_width=True, config={'displayModeBar': False})
+
+                            # Tambahkan interpretasi untuk energi fosil
+                            if percentage_remaining > 0:
+                                st.info(f"""
+                                **Interpretasi:**
+                                - Cadangan {energy_type} diperkirakan tersisa sekitar {percentage_remaining:.1f}% pada tahun {target_year}.
+                                - Dengan tingkat konsumsi saat ini, cadangan diperkirakan akan habis sekitar tahun {int(depletion_year)}.
+                                - Total cadangan tersisa sebesar {abs(remaining_reserves):,.0f} T BTU dari total {ENERGY_RESERVES[energy_type]:,.0f} T BTU.
+                                """)
+                            else:
+                                st.error(f"""
+                                **Interpretasi:**
+                                - Cadangan {energy_type} diperkirakan sudah habis pada tahun {int(depletion_year)}, sebelum target prediksi tahun {target_year}.
+                                - Diperlukan penemuan cadangan baru atau pengurangan konsumsi untuk mencegah kelangkaan.
+                                """)
+
+                    elif energy_type == "Fuel Ethanol":
+                        # Visualisasi Potensi Penggantian Bahan Bakar Bensin (hanya pie chart)
+                        st.markdown("### Potensi Penggantian Bahan Bakar Bensin")
+
+                        # Calculate proportion
+                        proportion, renewable_value, fossil_value = calculate_replacement_proportion(
+                            future_df, gasoline_df, target_year, "Fuel Ethanol"
                         )
 
-                        # Tampilkan label nilai numerik dengan jarak yang sesuai
-                        gauge_fig.add_annotation(
-                            x=0.5, y=0.40,  # Jarak yang lebih dekat dengan persentase
-                            text=reserve_text,
-                            font={'size': 22, 'color': text_color, 'family': 'Arial, sans-serif', 'weight': 'bold'},
-                            showarrow=False,
-                            align="center"
+                        # Colors
+                        renewable_color = ENERGY_COLORS.get(energy_type, '#8D6E63')
+                        fossil_color = "#FF6F00"  # Similar to petroleum color
+
+                        # Create pie chart only
+                        replacement_fig = go.Figure()
+
+                        # Add pie chart
+                        labels = ["Fuel Ethanol", "Motor Gasoline"]
+                        values = [renewable_value, max(0, fossil_value - renewable_value)]
+
+                        replacement_fig.add_trace(
+                            go.Pie(
+                                labels=labels,
+                                values=values,
+                                hole=0.4,
+                                marker=dict(
+                                    colors=[renewable_color, fossil_color],
+                                    line=dict(color='#FFF', width=1)
+                                ),
+                                textinfo="label+percent",
+                                insidetextorientation="radial",
+                                textfont=dict(size=14, color='#FFF'),
+                                hoverinfo="label+value+percent",
+                                textposition="inside"
+                            )
                         )
 
-                        # Layout yang lebih menarik dan konsisten dengan visualisasi prediksi
-                        gauge_fig.update_layout(
+                        # Update layout
+                        replacement_fig.update_layout(
                             height=450,
-                            margin=dict(l=20, r=20, t=60, b=20),
-                            paper_bgcolor="rgba(0,0,0,0)",  # Paper background transparan
-                            plot_bgcolor="rgba(0,0,0,0)",   # Plot background transparan
-                            font={'color': "#808080", 'family': "Arial, sans-serif"},  # Abu-abu
-                            template="plotly_white",
-                            hovermode="closest",
-                            hoverlabel=dict(
-                                bgcolor="white",
-                                font_size=14,
-                                font_family="Arial, sans-serif"
-                            ),
-                            showlegend=False
+                            margin=dict(l=20, r=20, t=50, b=20),
+                            paper_bgcolor="rgba(0,0,0,0)",
+                            plot_bgcolor="rgba(0,0,0,0)",
+                            font={'color': "#808080", 'family': "Arial, sans-serif"},
+                            showlegend=False,
+                            title={
+                                'text': f"Perbandingan Produksi Energi ({target_year})",
+                                'font': {'size': 18, 'color': '#808080'}
+                            }
                         )
 
-                        # Tambahkan interaktivitas melalui tooltip kustom
-                        gauge_fig.add_trace(go.Scatter(
-                            x=[0.5],
-                            y=[0.5],
-                            mode="markers",
-                            marker=dict(
-                                size=1,
-                                color="rgba(0,0,0,0)"
-                            ),
-                            hoverinfo="text",
-                            hovertext=f"<b>Detail Cadangan {energy_type}</b><br>" +
-                                    f"Total cadangan awal: {ENERGY_RESERVES[energy_type]:,.0f}<br>" +
-                                    f"Cadangan tersisa: {reserve_text}<br>" +
-                                    f"Persentase tersisa: {max(0, percentage_remaining):.1f}%",
-                            showlegend=False
-                        ))
+                        # Display the visualization
+                        st.plotly_chart(replacement_fig, use_container_width=True)
 
-                        # Tampilkan chart
-                        st.plotly_chart(gauge_fig, use_container_width=True, config={'displayModeBar': False})
+                        # Add explanatory text
+                        st.info(f"""
+                        **Interpretasi:**
+                        - Fuel Ethanol dapat memenuhi sekitar {proportion:.1f}% dari kebutuhan Motor Gasoline (bensin) pada tahun {target_year}.
+                        - Untuk mencapai penggantian 100%, diperlukan peningkatan produksi Fuel Ethanol sebesar {(fossil_value - renewable_value):,.2f} T BTU.
+                        """)
 
-                        # Tambahkan interpretasi untuk energi fosil
-                        if percentage_remaining > 0:
-                            st.info(f"""
-                            **Interpretasi:**
-                            - Cadangan {energy_type} diperkirakan tersisa sekitar {percentage_remaining:.1f}% pada tahun {target_year}.
-                            - Dengan tingkat konsumsi saat ini, cadangan diperkirakan akan habis sekitar tahun {int(depletion_year)}.
-                            - Total cadangan tersisa sebesar {abs(remaining_reserves):,.0f} T BTU dari total {ENERGY_RESERVES[energy_type]:,.0f} T BTU.
-                            """)
-                        else:
-                            st.error(f"""
-                            **Interpretasi:**
-                            - Cadangan {energy_type} diperkirakan sudah habis pada tahun {int(depletion_year)}, sebelum target prediksi tahun {target_year}.
-                            - Diperlukan penemuan cadangan baru atau pengurangan konsumsi untuk mencegah kelangkaan.
-                            """)
+                    # Tambah tabel ringkasan (opsional, bisa dihide secara default)
+                    with st.expander("Tabel Data Prediksi", expanded=False):
+                        yearly_future = future_df.resample('Y').mean().reset_index()
+                        yearly_future["Tahun"] = yearly_future["Tahun"].dt.year
+                        yearly_future = yearly_future.rename(columns={"Tahun": "Tahun", "Produksi": "Produksi (rata-rata)"})
+                        st.dataframe(yearly_future, use_container_width=True)
 
-                elif energy_type == "Fuel Ethanol":
-                    # Visualisasi Potensi Penggantian Bahan Bakar Bensin (hanya pie chart)
-                    st.markdown("### Potensi Penggantian Bahan Bakar Bensin")
+    except FileNotFoundError:
+        st.error(f"File model atau data tidak ditemukan untuk energi {energy_type}.")
+        st.info("Pastikan semua file model dan data tersedia di folder 'materials'.")
+    except Exception as e:
+        st.error(f"Terjadi kesalahan: {str(e)}")
+        st.info("Coba pilih jenis energi lain atau sesuaikan parameter prediksi.")
 
-                    # Calculate proportion
-                    proportion, renewable_value, fossil_value = calculate_replacement_proportion(
-                        future_df, gasoline_df, target_year, "Fuel Ethanol"
-                    )
+    # --- FOOTER ---
+    st.markdown('<div class="footer">', unsafe_allow_html=True)
+    st.markdown('© 2023 Prediksi Produksi Energi | Dibuat dengan Streamlit', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
-                    # Colors
-                    renewable_color = ENERGY_COLORS.get(energy_type, '#8D6E63')
-                    fossil_color = "#FF6F00"  # Similar to petroleum color
+# --- MAIN EXECUTION ---
+if __name__ == "__main__":
+    # Callback untuk menangani tombol pada welcome screen
+    if "welcome_button_clicked" in st.session_state:
+        st.session_state.show_welcome = False
 
-                    # Create pie chart only
-                    replacement_fig = go.Figure()
+    # Tampilkan welcome screen atau main app berdasarkan state
+    if st.session_state.show_welcome:
+        show_welcome_screen()
 
-                    # Add pie chart
-                    labels = ["Fuel Ethanol", "Motor Gasoline"]
-                    values = [renewable_value, max(0, fossil_value - renewable_value)]
-
-                    replacement_fig.add_trace(
-                        go.Pie(
-                            labels=labels,
-                            values=values,
-                            hole=0.4,
-                            marker=dict(
-                                colors=[renewable_color, fossil_color],
-                                line=dict(color='#FFF', width=1)
-                            ),
-                            textinfo="label+percent",
-                            insidetextorientation="radial",
-                            textfont=dict(size=14, color='#FFF'),
-                            hoverinfo="label+value+percent",
-                            textposition="inside"
-                        )
-                    )
-
-                    # Update layout
-                    replacement_fig.update_layout(
-                        height=450,
-                        margin=dict(l=20, r=20, t=50, b=20),
-                        paper_bgcolor="rgba(0,0,0,0)",
-                        plot_bgcolor="rgba(0,0,0,0)",
-                        font={'color': "#808080", 'family': "Arial, sans-serif"},
-                        showlegend=False,
-                        title={
-                            'text': f"Perbandingan Produksi Energi ({target_year})",
-                            'font': {'size': 18, 'color': '#808080'}
-                        }
-                    )
-
-                    # Display the visualization
-                    st.plotly_chart(replacement_fig, use_container_width=True)
-
-                    # Add explanatory text
-                    st.info(f"""
-                    **Interpretasi:**
-                    - Fuel Ethanol dapat memenuhi sekitar {proportion:.1f}% dari kebutuhan Motor Gasoline (bensin) pada tahun {target_year}.
-                    - Untuk mencapai penggantian 100%, diperlukan peningkatan produksi Fuel Ethanol sebesar {(fossil_value - renewable_value):,.2f} T BTU.
-                    """)
-
-                # Tambah tabel ringkasan (opsional, bisa dihide secara default)
-                with st.expander("Tabel Data Prediksi", expanded=False):
-                    yearly_future = future_df.resample('Y').mean().reset_index()
-                    yearly_future["Tahun"] = yearly_future["Tahun"].dt.year
-                    yearly_future = yearly_future.rename(columns={"Tahun": "Tahun", "Produksi": "Produksi (rata-rata)"})
-                    st.dataframe(yearly_future, use_container_width=True)
-
-except FileNotFoundError:
-    st.error(f"File model atau data tidak ditemukan untuk energi {energy_type}.")
-    st.info("Pastikan semua file model dan data tersedia di folder 'materials'.")
-except Exception as e:
-    st.error(f"Terjadi kesalahan: {str(e)}")
-    st.info("Coba pilih jenis energi lain atau sesuaikan parameter prediksi.")
-
-# --- FOOTER ---
-st.markdown('<div class="footer">', unsafe_allow_html=True)
-st.markdown('© 2023 Prediksi Produksi Energi | Dibuat dengan Streamlit', unsafe_allow_html=True)
-st.markdown('</div>', unsafe_allow_html=True)
+        # Tambahkan tombol alternatif di bawah welcome screen sebagai fallback
+        if st.button("Lanjutkan ke Aplikasi", key="welcome_button_clicked"):
+            st.session_state.show_welcome = False
+            st.experimental_rerun()
+    else:
+        show_main_app()
