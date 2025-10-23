@@ -47,8 +47,94 @@ st.markdown("""
         font-size: 0.8rem;
         border-top: 1px solid #e0e0e0;
     }
+    .popup-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.7);
+        z-index: 1000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    .popup-content {
+        background-color: white;
+        padding: 30px;
+        border-radius: 10px;
+        max-width: 500px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        text-align: center;
+    }
+    .popup-title {
+        color: #1E88E5;
+        font-size: 22px;
+        margin-bottom: 15px;
+        font-weight: bold;
+    }
+    .popup-text {
+        color: #424242;
+        font-size: 16px;
+        line-height: 1.5;
+        margin-bottom: 25px;
+    }
+    .popup-btn {
+        background-color: #1E88E5;
+        color: white;
+        border: none;
+        padding: 10px 25px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: bold;
+        transition: background-color 0.3s;
+    }
+    .popup-btn:hover {
+        background-color: #1565C0;
+    }
+    .popup-icon {
+        font-size: 48px;
+        margin-bottom: 15px;
+    }
 </style>
 """, unsafe_allow_html=True)
+
+# --- WELCOME POPUP ---
+if 'show_popup' not in st.session_state:
+    st.session_state.show_popup = True
+
+if st.session_state.show_popup:
+    popup_html = """
+    <div class="popup-overlay" id="welcome-popup">
+        <div class="popup-content">
+            <div class="popup-icon">🔍✨</div>
+            <div class="popup-title">Selamat Datang di Aplikasi Prediksi Energi</div>
+            <p class="popup-text">
+                Untuk pengalaman terbaik dalam menjelajahi visualisasi data kami, 
+                kami merekomendasikan untuk:<br><br>
+                • Mengatur zoom browser ke <b>70%</b><br>
+                • Menggunakan mode terang (Light Mode)<br><br>
+                Pengaturan ini akan membantu Anda melihat detail grafik dan 
+                perbandingan data dengan lebih optimal.
+            </p>
+            <button onclick="document.getElementById('welcome-popup').style.display='none';" class="popup-btn">
+                Mengerti, Lanjutkan
+            </button>
+        </div>
+    </div>
+    <script>
+        // Menutup popup saat tombol diklik
+        document.querySelector('.popup-btn').addEventListener('click', function() {
+            document.getElementById('welcome-popup').style.display = 'none';
+        });
+    </script>
+    """
+    st.markdown(popup_html, unsafe_allow_html=True)
+
+    if st.button('Mengerti, Lanjutkan', key='close_popup'):
+        st.session_state.show_popup = False
+        st.experimental_rerun()
 
 # --- PATHS ---
 DATA_PATH = "materials/Combined_modelling.xlsx"
@@ -79,6 +165,7 @@ ENERGY_RESERVES = {
 }
 
 # --- LOAD DATA ---
+@st.cache_data
 @st.cache_data
 def load_data(energy_type):
     """Load dan filter data berdasarkan jenis energi."""
