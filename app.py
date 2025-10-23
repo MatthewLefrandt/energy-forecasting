@@ -96,7 +96,6 @@ st.markdown("""
         cursor: pointer;
         border: none;
         transition: all 0.3s;
-        text-decoration: none;
     }
     .popup-btn:hover {
         background-color: #1565C0;
@@ -117,7 +116,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Inisialisasi session state untuk mengontrol tampilan welcome popup
+# Inisialisasi session state untuk welcome popup
 if 'show_welcome' not in st.session_state:
     st.session_state.show_welcome = True
 
@@ -468,7 +467,7 @@ ENERGY_COLORS = {
 }
 
 def show_welcome_popup():
-    # HTML untuk popup
+    # Popup yang diperbaiki menggunakan button standard HTML tanpa href
     welcome_popup = """
     <div class="overlay" id="welcome-overlay">
         <div class="popup-card">
@@ -482,26 +481,23 @@ def show_welcome_popup():
                 Pengaturan ini akan membantu Anda melihat detail grafik dan 
                 perbandingan data dengan lebih optimal.
             </div>
-            <a href="javascript:void(0);" onclick="closePopup()" class="popup-btn">Mengerti, Lanjutkan</a>
+            <button class="popup-btn" id="continue-btn" type="button">Mengerti, Lanjutkan</button>
         </div>
     </div>
     <script>
-        function closePopup() {
+        // Dapatkan tombol
+        const continueButton = document.getElementById('continue-btn');
+
+        // Tambahkan event listener
+        continueButton.addEventListener('click', function() {
+            // Sembunyikan overlay
             document.getElementById('welcome-overlay').style.display = 'none';
-            // Panggil endpoint Streamlit untuk mengubah session state
-            const data = {
-                'closePopup': true
-            };
-            fetch('/_stcore/stream', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data)
-            });
-            // Klik tombol tersembunyi untuk memicu rerun
-            document.getElementById('hidden-button').click();
-        }
+
+            // Klik tombol tersembunyi Streamlit untuk memicu rerun
+            setTimeout(function() {
+                document.getElementById('hidden-button').click();
+            }, 100);
+        });
     </script>
     """
 
@@ -509,10 +505,9 @@ def show_welcome_popup():
     st.markdown(welcome_popup, unsafe_allow_html=True)
 
     # Tombol tersembunyi yang akan di-klik oleh JavaScript
-    if st.button("", key="hidden-button", help="Tombol ini tersembunyi"):
+    if st.button("", key="hidden-button"):
         st.session_state.show_welcome = False
         st.experimental_rerun()
-
 
 # --- WELCOME SCREEN ---
 def show_welcome_screen():
@@ -1298,13 +1293,9 @@ def show_main_app():
 
 # --- MAIN EXECUTION ---
 if __name__ == "__main__":
-    # Pantau permintaan JavaScript untuk menutup popup
-    if st.query_params.get("closePopup") == "true":
-        st.session_state.show_welcome = False
-
-    # Tampilkan welcome screen atau main app berdasarkan state
+    # Selalu tampilkan welcome popup jika session state mengindikasikannya
     if st.session_state.show_welcome:
         show_welcome_popup()
 
-    # Selalu tampilkan aplikasi utama (popup akan menutupinya jika masih aktif)
-    show_main_app()
+    # Aplikasi utama tetap berjalan di belakang popup
+    show_main_app()  # Fungsi ini berisi kode aplikasi utama
