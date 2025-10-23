@@ -47,61 +47,77 @@ st.markdown("""
         font-size: 0.8rem;
         border-top: 1px solid #e0e0e0;
     }
-    .welcome-screen {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
+    /* Welcome popup styling */
+    .overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
         height: 100vh;
-        background-color: rgba(255, 255, 255, 0.95);
-        padding: 2rem;
-        text-align: center;
+        background-color: rgba(0, 0, 0, 0.7);
+        z-index: 1000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
     }
-    .welcome-card {
+    .popup-card {
         background-color: white;
         border-radius: 20px;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
         padding: 40px;
-        max-width: 600px;
-        width: 100%;
+        max-width: 500px;
+        width: 90%;
+        text-align: center;
     }
-    .welcome-icon {
-        font-size: 60px;
+    .popup-icon {
+        font-size: 64px;
         margin-bottom: 20px;
     }
-    .welcome-title {
+    .popup-title {
         color: #1E88E5;
-        font-size: 28px;
-        font-weight: bold;
+        font-size: 24px;
+        font-weight: 700;
         margin-bottom: 20px;
     }
-    .welcome-text {
+    .popup-text {
         color: #424242;
-        font-size: 18px;
+        font-size: 16px;
         line-height: 1.6;
         margin-bottom: 30px;
     }
-    .welcome-button {
+    .popup-btn {
+        display: inline-block;
         background-color: #1E88E5;
         color: white;
-        padding: 12px 30px;
-        font-size: 18px;
-        font-weight: bold;
-        border: none;
+        font-size: 16px;
+        font-weight: 600;
+        padding: 12px 32px;
         border-radius: 50px;
         cursor: pointer;
-        margin-top: 10px;
+        border: none;
         transition: all 0.3s;
+        text-decoration: none;
     }
-    .welcome-button:hover {
+    .popup-btn:hover {
         background-color: #1565C0;
         transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+    }
+    /* Sembunyikan tombol Streamlit default */
+    .stButton {
+        display: none !important; 
+    }
+    /* Penyesuaian untuk mobile */
+    @media (max-width: 768px) {
+        .popup-card {
+            width: 85%;
+            padding: 30px 20px;
+        }
     }
 </style>
 """, unsafe_allow_html=True)
 
-# Inisialisasi session state untuk mengontrol tampilan welcome screen
+# Inisialisasi session state untuk mengontrol tampilan welcome popup
 if 'show_welcome' not in st.session_state:
     st.session_state.show_welcome = True
 
@@ -450,6 +466,53 @@ ENERGY_COLORS = {
     "Biodiesel": "#33691E",
     "Fuel Ethanol": "#8D6E63"
 }
+
+def show_welcome_popup():
+    # HTML untuk popup
+    welcome_popup = """
+    <div class="overlay" id="welcome-overlay">
+        <div class="popup-card">
+            <div class="popup-icon">🔍✨</div>
+            <div class="popup-title">Selamat Datang di Aplikasi Prediksi Energi</div>
+            <div class="popup-text">
+                Untuk pengalaman terbaik dalam menjelajahi visualisasi data kami, 
+                kami merekomendasikan untuk:<br><br>
+                • Mengatur zoom browser ke <b>70%</b><br>
+                • Menggunakan mode terang (Light Mode)<br><br>
+                Pengaturan ini akan membantu Anda melihat detail grafik dan 
+                perbandingan data dengan lebih optimal.
+            </div>
+            <a href="javascript:void(0);" onclick="closePopup()" class="popup-btn">Mengerti, Lanjutkan</a>
+        </div>
+    </div>
+    <script>
+        function closePopup() {
+            document.getElementById('welcome-overlay').style.display = 'none';
+            // Panggil endpoint Streamlit untuk mengubah session state
+            const data = {
+                'closePopup': true
+            };
+            fetch('/_stcore/stream', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            });
+            // Klik tombol tersembunyi untuk memicu rerun
+            document.getElementById('hidden-button').click();
+        }
+    </script>
+    """
+
+    # Tampilkan popup
+    st.markdown(welcome_popup, unsafe_allow_html=True)
+
+    # Tombol tersembunyi yang akan di-klik oleh JavaScript
+    if st.button("", key="hidden-button", help="Tombol ini tersembunyi"):
+        st.session_state.show_welcome = False
+        st.experimental_rerun()
+
 
 # --- WELCOME SCREEN ---
 def show_welcome_screen():
@@ -1235,17 +1298,13 @@ def show_main_app():
 
 # --- MAIN EXECUTION ---
 if __name__ == "__main__":
-    # Callback untuk menangani tombol pada welcome screen
-    if "welcome_button_clicked" in st.session_state:
+    # Pantau permintaan JavaScript untuk menutup popup
+    if st.query_params.get("closePopup") == "true":
         st.session_state.show_welcome = False
 
     # Tampilkan welcome screen atau main app berdasarkan state
     if st.session_state.show_welcome:
-        show_welcome_screen()
+        show_welcome_popup()
 
-        # Tambahkan tombol alternatif di bawah welcome screen sebagai fallback
-        if st.button("Lanjutkan ke Aplikasi", key="welcome_button_clicked"):
-            st.session_state.show_welcome = False
-            st.experimental_rerun()
-    else:
-        show_main_app()
+    # Selalu tampilkan aplikasi utama (popup akan menutupinya jika masih aktif)
+    show_main_app()
