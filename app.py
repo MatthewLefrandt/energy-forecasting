@@ -100,7 +100,7 @@ if st.session_state.show_welcome:
     with col2:
         if st.button("Mengerti, Lanjutkan", key="continue_btn", use_container_width=True):
             st.session_state.show_welcome = False
-            st.experimental_rerun()
+            st.rerun()  # Gunakan st.rerun() sebagai pengganti st.experimental_rerun()
 
 else:
     # CSS untuk aplikasi utama
