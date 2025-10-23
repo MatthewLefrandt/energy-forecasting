@@ -16,503 +16,70 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- CUSTOM CSS ---
-st.markdown("""
-<style>
-    .main-header {
-        font-size: 2.5rem;
-        color: #1E88E5;
-        margin-bottom: 0.5rem;
-    }
-    .sub-header {
-        font-size: 1.1rem;
-        color: #424242;
-        margin-bottom: 2rem;
-    }
-    .prediction-card {
-        background-color: #f5f7f9;
-        padding: 20px;
-        border-radius: 10px;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-    }
-    .prediction-value {
-        font-size: 3rem;
-        font-weight: bold;
-        color: #1E88E5;
-    }
-    .footer {
-        margin-top: 3rem;
-        padding-top: 1rem;
-        color: #9e9e9e;
-        font-size: 0.8rem;
-        border-top: 1px solid #e0e0e0;
-    }
-    /* Welcome popup styling */
-    .overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        background-color: rgba(0, 0, 0, 0.7);
-        z-index: 1000;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-    }
-    .popup-card {
-        background-color: white;
-        border-radius: 20px;
-        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
-        padding: 40px;
-        max-width: 500px;
-        width: 90%;
-        text-align: center;
-    }
-    .popup-icon {
-        font-size: 64px;
-        margin-bottom: 20px;
-    }
-    .popup-title {
-        color: #1E88E5;
-        font-size: 24px;
-        font-weight: 700;
-        margin-bottom: 20px;
-    }
-    .popup-text {
-        color: #424242;
-        font-size: 16px;
-        line-height: 1.6;
-        margin-bottom: 30px;
-    }
-    .popup-btn {
-        display: inline-block;
-        background-color: #1E88E5;
-        color: white;
-        font-size: 16px;
-        font-weight: 600;
-        padding: 12px 32px;
-        border-radius: 50px;
-        cursor: pointer;
-        border: none;
-        transition: all 0.3s;
-    }
-    .popup-btn:hover {
-        background-color: #1565C0;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
-    }
-    /* Sembunyikan tombol Streamlit default */
-    .stButton {
-        display: none !important; 
-    }
-    /* Penyesuaian untuk mobile */
-    @media (max-width: 768px) {
-        .popup-card {
-            width: 85%;
-            padding: 30px 20px;
-        }
-    }
-</style>
-""", unsafe_allow_html=True)
-
-# Inisialisasi session state untuk welcome popup
+# --- INISIALISASI STATE ---
 if 'show_welcome' not in st.session_state:
     st.session_state.show_welcome = True
 
-# --- PATHS ---
-DATA_PATH = "materials/Combined_modelling.xlsx"
-MODEL_PATHS = {
-    "Batu Bara": "materials/svr_coal_model.pkl",
-    "Gas Alam": "materials/svr_natural_gas_model.pkl",
-    "Minyak Bumi": "materials/svr_petroleum_model.pkl",
-    "Biodiesel": "materials/linreg_biodiesel_model.pkl",
-    "Fuel Ethanol": "materials/svr_fuel_ethanol_model.pkl"
-}
-SCALER_PATHS = {
-    "Batu Bara": "materials/scaler_coal.pkl",
-    "Gas Alam": "materials/scaler_natural_gas.pkl",
-    "Minyak Bumi": "materials/scaler_petroleum.pkl",
-    "Biodiesel": "materials/scaler_biodiesel.pkl",
-    "Fuel Ethanol": "materials/scaler_fuel_ethanol.pkl"
-}
-DIESEL_DATA_PATH = "materials/df_produksi_distilatefueloil_for_deployment.xlsx"
-GASOLINE_DATA_PATH = "materials/df_produksi_motorgasoline_for_deployment.xlsx"
-
-# --- ENERGY RESERVES --- 
-ENERGY_RESERVES = {
-    "Batu Bara": 21_444_852.31,  # Dalam trilliun BTU
-    "Gas Alam": 7_172_147.19,  # Dalam trilliun BTU
-    "Minyak Bumi": 9_390_178.86,  # Dalam trilliun BTU
-    "Biodiesel": 0,  # Placeholder
-    "Fuel Ethanol": 0  # Placeholder
-}
-
-# --- LOAD DATA ---
-@st.cache_data
-def load_data(energy_type):
-    """Load dan filter data berdasarkan jenis energi."""
-    df = pd.read_excel(DATA_PATH)
-    df = df[df["Jenis_Energi"] == energy_type].drop(columns=["Tipe_Aliran"])
-    df = df.T.reset_index()
-    df.columns = ['Tahun', 'Produksi']
-    df = df[1:]
-
-    if energy_type == "Biodiesel":
-        df["Tahun"] = df["Tahun"].astype(int)
-        df["Produksi"] = df["Produksi"].astype(float)
-        df = df.dropna()
-        df = df[df["Produksi"] > 0]
-        df = df.set_index("Tahun")
-    else:
-        df["Tahun"] = pd.to_datetime(df["Tahun"].astype(int), format='%Y')
-        df["Produksi"] = df["Produksi"].astype(float)
-        df = df.set_index("Tahun")
-        df = df.resample("MS").interpolate(method="linear")
-    return df
-
-@st.cache_data
-def load_replacement_data():
-    """Load data for diesel and gasoline production/prediction."""
-    diesel_df = pd.read_excel(DIESEL_DATA_PATH)
-    diesel_df.columns = ['Tahun', 'Produksi_Prediksi']
-    diesel_df = diesel_df[diesel_df['Tahun'] <= 2100]
-
-    gasoline_df = pd.read_excel(GASOLINE_DATA_PATH)
-    gasoline_df.columns = ['Tahun', 'Produksi_Prediksi']
-    gasoline_df = gasoline_df[gasoline_df['Tahun'] <= 2100]
-
-    return diesel_df, gasoline_df
-
-# --- SMOOTHING FUNCTION ---
-def moving_average_smoothing(series, window=6):
-    """Fungsi untuk melakukan smoothing menggunakan moving average."""
-    return pd.Series(series).rolling(window=window, center=True, min_periods=1).mean()
-
-# --- FORECAST FUNCTIONS ---
-def forecast_production_svr(year, model, scaler, data):
-    """Prediksi dengan model SVR (data bulanan)."""
-    last_date = data.index[-1]
-    target_date = pd.to_datetime(f"{year}-12-01")
-    future_months = pd.date_range(start=last_date + pd.offsets.MonthBegin(1), end=target_date, freq="MS")
-
-    recent_values = data["Produksi"].values[-12:].tolist()
-    future_preds = []
-
-    for _ in range(len(future_months)):
-        lag_input = np.array(recent_values[-12:]).reshape(1, -1)
-        lag_scaled = scaler.transform(lag_input)
-        pred = model.predict(lag_scaled)[0]
-        future_preds.append(pred)
-        recent_values.append(pred)
-
-    future_df = pd.DataFrame({
-        "Tahun": future_months,
-        "Produksi": future_preds
-    }).set_index("Tahun")
-
-    future_df["Produksi"] = moving_average_smoothing(future_df["Produksi"])
-    return future_df
-
-def forecast_production_biodiesel(year, model, scaler, data):
-    """Prediksi dengan model Linear Regression (data tahunan)."""
-    last_year = data.index[-1]
-    last_value = data["Produksi"].values[-1]
-
-    future_years = list(range(last_year + 1, year + 1))
-    if not future_years:
-        return pd.DataFrame()
-
-    future_preds = []
-    recent_value = last_value
-
-    for _ in future_years:
-        lag_input = np.array([[recent_value]])
-        lag_scaled = scaler.transform(lag_input)
-        pred = model.predict(lag_scaled)[0]
-        future_preds.append(pred)
-        recent_value = pred
-
-    future_df = pd.DataFrame({
-        "Tahun": future_years,
-        "Produksi": future_preds
-    }).set_index("Tahun")
-
-    future_df["Produksi"] = moving_average_smoothing(future_df["Produksi"], window=3)
-    return future_df
-
-# --- RESERVE CALCULATION FUNCTION ---
-def calculate_remaining_reserves(energy_type, historical_df, future_df, target_year):
-    """
-    Menghitung cadangan energi yang tersisa dan estimasi tahun habisnya.
-
-    Args:
-        energy_type (str): Jenis energi yang dipilih
-        historical_df (DataFrame): Data historis produksi
-        future_df (DataFrame): Data prediksi produksi
-        target_year (int): Tahun prediksi target
-
-    Returns:
-        tuple: (cadangan_tersisa, estimasi_tahun_habis, persentase_tersisa)
-    """
-    if energy_type not in ENERGY_RESERVES or ENERGY_RESERVES[energy_type] == 0:
-        return None, None, None
-
-    try:
-        # Ambil total cadangan awal
-        initial_reserves = ENERGY_RESERVES[energy_type]
-
-        # 1. Dapatkan data historis dari file Excel (1980-2023)
-        raw_data = pd.read_excel(DATA_PATH)
-        raw_data = raw_data[raw_data["Jenis_Energi"] == energy_type]
-
-        # Ambil data tahunan dari 1980-2023
-        historical_years = range(1980, 2024)  # dari 1980 hingga 2023
-        historical_consumption = 0
-
-        # Jika data bentuknya sudah tahunan
-        if not raw_data.empty:
-            # Ambil baris data untuk energi yang dipilih
-            energy_data = raw_data.iloc[0]
-
-            # Jumlahkan konsumsi historis (1980-2023)
-            for year in historical_years:
-                year_str = str(year)
-                if year_str in energy_data and not pd.isna(energy_data[year_str]):
-                    historical_consumption += float(energy_data[year_str])
-
-        # 2. Dapatkan data prediksi dari tahun 2024 sampai tahun target
-        future_consumption = 0
-
-        if energy_type == "Biodiesel":
-            # Untuk data biodiesel yang sudah dalam format tahunan
-            for year in range(2024, target_year + 1):
-                if year in future_df.index:
-                    value = future_df.loc[year, "Produksi"]
-                    if isinstance(value, pd.Series):
-                        value = value.iloc[0]  # Ambil nilai pertama jika Series
-                    future_consumption += value
-        else:
-            # Untuk data lain yang dalam format bulanan, ambil hanya bulan Desember sebagai nilai tahunan
-            for year in range(2024, target_year + 1):
-                december = f"{year}-12"
-                if december in future_df.index:
-                    value = future_df.loc[december, "Produksi"]
-                    if isinstance(value, pd.Series):
-                        value = value.iloc[0]  # Ambil nilai pertama jika Series
-                    future_consumption += value
-
-        # 3. Hitung cadangan tersisa
-        remaining_reserves = initial_reserves - historical_consumption - future_consumption
-
-        # 4. Hitung persentase cadangan tersisa
-        percentage_remaining = (remaining_reserves / initial_reserves) * 100
-
-        # 5. Prediksi tahun habisnya berdasarkan laju konsumsi terakhir
-        if energy_type == "Biodiesel":
-            # Gunakan nilai prediksi tahun terakhir
-            if target_year in future_df.index:
-                annual_consumption_rate = future_df.loc[target_year, "Produksi"]
-                if isinstance(annual_consumption_rate, pd.Series):
-                    annual_consumption_rate = annual_consumption_rate.iloc[0]
-            else:
-                annual_consumption_rate = future_df["Produksi"].iloc[-1]
-        else:
-            # Gunakan nilai prediksi Desember tahun terakhir
-            december_target = f"{target_year}-12"
-            if december_target in future_df.index:
-                annual_consumption_rate = future_df.loc[december_target, "Produksi"]
-                if isinstance(annual_consumption_rate, pd.Series):
-                    annual_consumption_rate = annual_consumption_rate.iloc[0]
-            else:
-                # Ambil data Desember terakhir yang ada
-                try:
-                    # Cari bulan Desember terakhir yang tersedia
-                    december_dates = [date for date in future_df.index if date.month == 12]
-                    if december_dates:
-                        last_december = max(december_dates)
-                        annual_consumption_rate = future_df.loc[last_december, "Produksi"]
-                        if isinstance(annual_consumption_rate, pd.Series):
-                            annual_consumption_rate = annual_consumption_rate.iloc[0]
-                    else:
-                        annual_consumption_rate = future_df["Produksi"].iloc[-1]
-                except:
-                    annual_consumption_rate = future_df["Produksi"].iloc[-1]
-
-        # Jika cadangan tersisa negatif, cari tahun habisnya antara tahun awal dan target
-        if remaining_reserves <= 0:
-            # Reset nilai konsumsi historis
-            cumulative_consumption = historical_consumption
-
-            # Cari tahun di mana cadangan habis
-            for year in range(2024, target_year + 1):
-                if energy_type == "Biodiesel":
-                    if year in future_df.index:
-                        year_consumption = future_df.loc[year, "Produksi"]
-                        if isinstance(year_consumption, pd.Series):
-                            year_consumption = year_consumption.iloc[0]
-                    else:
-                        continue
-                else:
-                    december = f"{year}-12"
-                    if december in future_df.index:
-                        year_consumption = future_df.loc[december, "Produksi"]
-                        if isinstance(year_consumption, pd.Series):
-                            year_consumption = year_consumption.iloc[0]
-                    else:
-                        continue
-
-                cumulative_consumption += year_consumption
-                if cumulative_consumption >= initial_reserves:
-                    # Interpolasi untuk mendapatkan fraksi tahun yang lebih akurat
-                    prev_consumption = cumulative_consumption - year_consumption
-                    remaining = initial_reserves - prev_consumption
-                    fraction = remaining / year_consumption
-                    estimated_year = year - 1 + fraction
-
-                    # Kembalikan nilai cadangan yang mungkin negatif jika target_year melebihi tahun habis
-                    if target_year > estimated_year:
-                        over_consumption = cumulative_consumption - initial_reserves
-                        # Buat nilai percentage_remaining negatif untuk menunjukkan habisnya
-                        percentage_remaining = -1 * (over_consumption / initial_reserves) * 100
-                        return remaining_reserves, estimated_year, percentage_remaining
-
-                    return 0, estimated_year, 0
-
-            # Jika tidak bisa ditemukan tahun pastinya, gunakan nilai sebelum tahun target
-            return remaining_reserves, target_year - 1, percentage_remaining
-        else:
-            # Hitung sisa tahun berdasarkan konsumsi tahunan terakhir
-            years_remaining = remaining_reserves / annual_consumption_rate if annual_consumption_rate > 0 else float('inf')
-            estimated_year_depleted = target_year + years_remaining
-
-        return remaining_reserves, estimated_year_depleted, percentage_remaining
-
-    except Exception as e:
-        print(f"Error dalam calculate_remaining_reserves: {e}")
-        return None, None, None
-
-# --- REPLACEMENT PROPORTION CALCULATION ---
-def calculate_replacement_proportion(renewable_df, fossil_df, target_year, energy_type):
-    """
-    Calculate the proportion of renewable energy replacing fossil fuel.
-
-    Args:
-        renewable_df (DataFrame): Biodiesel or Fuel Ethanol production data
-        fossil_df (DataFrame): Distillate Fuel Oil or Motor Gasoline production data
-        target_year (int): Target year for calculation
-        energy_type (str): "Biodiesel" or "Fuel Ethanol"
-
-    Returns:
-        tuple: (proportion_percentage, renewable_value, fossil_value)
-    """
-    try:
-        # Get the fossil fuel value for target year
-        fossil_value = fossil_df[fossil_df['Tahun'] == target_year]['Produksi_Prediksi'].values[0]
-
-        # Get the renewable energy value for target year
-        if energy_type == "Biodiesel":
-            if target_year in renewable_df.index:
-                renewable_value = renewable_df.loc[target_year, "Produksi"]
-                if isinstance(renewable_value, pd.Series):
-                    renewable_value = renewable_value.iloc[0]
-            else:
-                # If target year not in data, find closest year
-                closest_year = min(renewable_df.index, key=lambda x: abs(x - target_year))
-                renewable_value = renewable_df.loc[closest_year, "Produksi"]
-                if isinstance(renewable_value, pd.Series):
-                    renewable_value = renewable_value.iloc[0]
-        else:  # Fuel Ethanol (monthly data)
-            target_date = f"{target_year}-12"
-            if target_date in renewable_df.index:
-                renewable_value = renewable_df.loc[target_date, "Produksi"]
-                if isinstance(renewable_value, pd.Series):
-                    renewable_value = renewable_value.iloc[0]
-            else:
-                # Find latest December value before target year
-                december_dates = [date for date in renewable_df.index 
-                               if isinstance(date, pd.Timestamp) and date.month == 12 and date.year <= target_year]
-                if december_dates:
-                    last_december = max(december_dates)
-                    renewable_value = renewable_df.loc[last_december, "Produksi"]
-                    if isinstance(renewable_value, pd.Series):
-                        renewable_value = renewable_value.iloc[0]
-                else:
-                    renewable_value = 0
-
-        # Calculate proportion percentage
-        proportion_percentage = (renewable_value / fossil_value) * 100
-
-        return proportion_percentage, renewable_value, fossil_value
-
-    except Exception as e:
-        print(f"Error in calculate_replacement_proportion: {e}")
-        return 0, 0, 0
-
-# --- ENERGY ICONS AND COLORS ---
-ENERGY_ICONS = {
-    "Batu Bara": "🪨",
-    "Gas Alam": "💨",
-    "Minyak Bumi": "🛢️",
-    "Biodiesel": "🌱",
-    "Fuel Ethanol": "🌽"
-}
-
-ENERGY_COLORS = {
-    "Batu Bara": "#37474F",
-    "Gas Alam": "#039BE5",
-    "Minyak Bumi": "#FF6F00",
-    "Biodiesel": "#33691E",
-    "Fuel Ethanol": "#8D6E63"
-}
-
-def show_welcome_popup():
-    # Popup yang diperbaiki menggunakan button standard HTML tanpa href
-    welcome_popup = """
-    <div class="overlay" id="welcome-overlay">
-        <div class="popup-card">
-            <div class="popup-icon">🔍✨</div>
-            <div class="popup-title">Selamat Datang di Aplikasi Prediksi Energi</div>
-            <div class="popup-text">
-                Untuk pengalaman terbaik dalam menjelajahi visualisasi data kami, 
-                kami merekomendasikan untuk:<br><br>
-                • Mengatur zoom browser ke <b>70%</b><br>
-                • Menggunakan mode terang (Light Mode)<br><br>
-                Pengaturan ini akan membantu Anda melihat detail grafik dan 
-                perbandingan data dengan lebih optimal.
-            </div>
-            <button class="popup-btn" id="continue-btn" type="button">Mengerti, Lanjutkan</button>
-        </div>
-    </div>
-    <script>
-        // Dapatkan tombol
-        const continueButton = document.getElementById('continue-btn');
-
-        // Tambahkan event listener
-        continueButton.addEventListener('click', function() {
-            // Sembunyikan overlay
-            document.getElementById('welcome-overlay').style.display = 'none';
-
-            // Klik tombol tersembunyi Streamlit untuk memicu rerun
-            setTimeout(function() {
-                document.getElementById('hidden-button').click();
-            }, 100);
-        });
-    </script>
-    """
-
-    # Tampilkan popup
-    st.markdown(welcome_popup, unsafe_allow_html=True)
-
-    # Tombol tersembunyi yang akan di-klik oleh JavaScript
-    if st.button("", key="hidden-button"):
-        st.session_state.show_welcome = False
-        st.experimental_rerun()
-
-# --- WELCOME SCREEN ---
-def show_welcome_screen():
+# --- TAMPILKAN HALAMAN BERDASARKAN STATE ---
+if st.session_state.show_welcome:
+    # CSS untuk halaman welcome
     st.markdown("""
-    <div class="welcome-screen">
+    <style>
+        .welcome-page {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 80vh;
+            text-align: center;
+            padding: 0 20px;
+        }
+        .welcome-card {
+            background-color: white;
+            border-radius: 20px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+        .welcome-icon {
+            font-size: 72px;
+            margin-bottom: 24px;
+        }
+        .welcome-title {
+            font-size: 28px;
+            color: #1E88E5;
+            margin-bottom: 24px;
+            font-weight: bold;
+        }
+        .welcome-text {
+            font-size: 18px;
+            color: #424242;
+            line-height: 1.6;
+            margin-bottom: 32px;
+        }
+        .stButton button {
+            background-color: #1E88E5 !important;
+            color: white !important;
+            font-size: 18px !important;
+            padding: 12px 24px !important;
+            border-radius: 50px !important;
+            font-weight: bold !important;
+            border: none !important;
+            cursor: pointer !important;
+            transition: all 0.3s ease !important;
+        }
+        .stButton button:hover {
+            background-color: #1565C0 !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+            transform: translateY(-2px) !important;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # Tampilkan welcome page sebagai halaman terpisah
+    st.markdown("""
+    <div class="welcome-page">
         <div class="welcome-card">
             <div class="welcome-icon">🔍✨</div>
             <div class="welcome-title">Selamat Datang di Aplikasi Prediksi Energi</div>
@@ -524,33 +91,398 @@ def show_welcome_screen():
                 Pengaturan ini akan membantu Anda melihat detail grafik dan 
                 perbandingan data dengan lebih optimal.
             </div>
-            <button id="continue-btn" class="welcome-button" onclick="hideWelcome()">Mengerti, Lanjutkan</button>
         </div>
     </div>
-
-    <script>
-        function hideWelcome() {
-            // Memanggil callback Streamlit untuk mengupdate session state
-            window.parent.postMessage({
-                type: "streamlit:setComponentValue",
-                value: true
-            }, "*");
-        }
-
-        // Menambahkan event listener untuk tombol
-        document.getElementById("continue-btn").addEventListener("click", function() {
-            hideWelcome();
-        });
-    </script>
     """, unsafe_allow_html=True)
 
-    # Tambahkan tombol Streamlit standar sebagai fallback jika JavaScript tidak berfungsi
-    if st.button("Mengerti, Lanjutkan", key="welcome_button"):
-        st.session_state.show_welcome = False
-        st.experimental_rerun()
+    # Tombol continue yang ditempatkan di tengah
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        if st.button("Mengerti, Lanjutkan", key="continue_btn", use_container_width=True):
+            st.session_state.show_welcome = False
+            st.experimental_rerun()
 
-# --- MAIN APP ---
-def show_main_app():
+else:
+    # CSS untuk aplikasi utama
+    st.markdown("""
+    <style>
+        .main-header {
+            font-size: 2.5rem;
+            color: #1E88E5;
+            margin-bottom: 0.5rem;
+        }
+        .sub-header {
+            font-size: 1.1rem;
+            color: #424242;
+            margin-bottom: 2rem;
+        }
+        .prediction-card {
+            background-color: #f5f7f9;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+        }
+        .prediction-value {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #1E88E5;
+        }
+        .footer {
+            margin-top: 3rem;
+            padding-top: 1rem;
+            color: #9e9e9e;
+            font-size: 0.8rem;
+            border-top: 1px solid #e0e0e0;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # --- PATHS ---
+    DATA_PATH = "materials/Combined_modelling.xlsx"
+    MODEL_PATHS = {
+        "Batu Bara": "materials/svr_coal_model.pkl",
+        "Gas Alam": "materials/svr_natural_gas_model.pkl",
+        "Minyak Bumi": "materials/svr_petroleum_model.pkl",
+        "Biodiesel": "materials/linreg_biodiesel_model.pkl",
+        "Fuel Ethanol": "materials/svr_fuel_ethanol_model.pkl"
+    }
+    SCALER_PATHS = {
+        "Batu Bara": "materials/scaler_coal.pkl",
+        "Gas Alam": "materials/scaler_natural_gas.pkl",
+        "Minyak Bumi": "materials/scaler_petroleum.pkl",
+        "Biodiesel": "materials/scaler_biodiesel.pkl",
+        "Fuel Ethanol": "materials/scaler_fuel_ethanol.pkl"
+    }
+    DIESEL_DATA_PATH = "materials/df_produksi_distilatefueloil_for_deployment.xlsx"
+    GASOLINE_DATA_PATH = "materials/df_produksi_motorgasoline_for_deployment.xlsx"
+
+    # --- ENERGY RESERVES --- 
+    ENERGY_RESERVES = {
+        "Batu Bara": 21_444_852.31,  # Dalam trilliun BTU
+        "Gas Alam": 7_172_147.19,  # Dalam trilliun BTU
+        "Minyak Bumi": 9_390_178.86,  # Dalam trilliun BTU
+        "Biodiesel": 0,  # Placeholder
+        "Fuel Ethanol": 0  # Placeholder
+    }
+
+    # --- ENERGY ICONS AND COLORS ---
+    ENERGY_ICONS = {
+        "Batu Bara": "🪨",
+        "Gas Alam": "💨",
+        "Minyak Bumi": "🛢️",
+        "Biodiesel": "🌱",
+        "Fuel Ethanol": "🌽"
+    }
+
+    ENERGY_COLORS = {
+        "Batu Bara": "#37474F",
+        "Gas Alam": "#039BE5",
+        "Minyak Bumi": "#FF6F00",
+        "Biodiesel": "#33691E",
+        "Fuel Ethanol": "#8D6E63"
+    }
+
+    # --- LOAD DATA ---
+    @st.cache_data
+    def load_data(energy_type):
+        """Load dan filter data berdasarkan jenis energi."""
+        df = pd.read_excel(DATA_PATH)
+        df = df[df["Jenis_Energi"] == energy_type].drop(columns=["Tipe_Aliran"])
+        df = df.T.reset_index()
+        df.columns = ['Tahun', 'Produksi']
+        df = df[1:]
+
+        if energy_type == "Biodiesel":
+            df["Tahun"] = df["Tahun"].astype(int)
+            df["Produksi"] = df["Produksi"].astype(float)
+            df = df.dropna()
+            df = df[df["Produksi"] > 0]
+            df = df.set_index("Tahun")
+        else:
+            df["Tahun"] = pd.to_datetime(df["Tahun"].astype(int), format='%Y')
+            df["Produksi"] = df["Produksi"].astype(float)
+            df = df.set_index("Tahun")
+            df = df.resample("MS").interpolate(method="linear")
+        return df
+
+    @st.cache_data
+    def load_replacement_data():
+        """Load data for diesel and gasoline production/prediction."""
+        diesel_df = pd.read_excel(DIESEL_DATA_PATH)
+        diesel_df.columns = ['Tahun', 'Produksi_Prediksi']
+        diesel_df = diesel_df[diesel_df['Tahun'] <= 2100]
+
+        gasoline_df = pd.read_excel(GASOLINE_DATA_PATH)
+        gasoline_df.columns = ['Tahun', 'Produksi_Prediksi']
+        gasoline_df = gasoline_df[gasoline_df['Tahun'] <= 2100]
+
+        return diesel_df, gasoline_df
+
+    # --- SMOOTHING FUNCTION ---
+    def moving_average_smoothing(series, window=6):
+        """Fungsi untuk melakukan smoothing menggunakan moving average."""
+        return pd.Series(series).rolling(window=window, center=True, min_periods=1).mean()
+
+    # --- FORECAST FUNCTIONS ---
+    def forecast_production_svr(year, model, scaler, data):
+        """Prediksi dengan model SVR (data bulanan)."""
+        last_date = data.index[-1]
+        target_date = pd.to_datetime(f"{year}-12-01")
+        future_months = pd.date_range(start=last_date + pd.offsets.MonthBegin(1), end=target_date, freq="MS")
+
+        recent_values = data["Produksi"].values[-12:].tolist()
+        future_preds = []
+
+        for _ in range(len(future_months)):
+            lag_input = np.array(recent_values[-12:]).reshape(1, -1)
+            lag_scaled = scaler.transform(lag_input)
+            pred = model.predict(lag_scaled)[0]
+            future_preds.append(pred)
+            recent_values.append(pred)
+
+        future_df = pd.DataFrame({
+            "Tahun": future_months,
+            "Produksi": future_preds
+        }).set_index("Tahun")
+
+        future_df["Produksi"] = moving_average_smoothing(future_df["Produksi"])
+        return future_df
+
+    def forecast_production_biodiesel(year, model, scaler, data):
+        """Prediksi dengan model Linear Regression (data tahunan)."""
+        last_year = data.index[-1]
+        last_value = data["Produksi"].values[-1]
+
+        future_years = list(range(last_year + 1, year + 1))
+        if not future_years:
+            return pd.DataFrame()
+
+        future_preds = []
+        recent_value = last_value
+
+        for _ in future_years:
+            lag_input = np.array([[recent_value]])
+            lag_scaled = scaler.transform(lag_input)
+            pred = model.predict(lag_scaled)[0]
+            future_preds.append(pred)
+            recent_value = pred
+
+        future_df = pd.DataFrame({
+            "Tahun": future_years,
+            "Produksi": future_preds
+        }).set_index("Tahun")
+
+        future_df["Produksi"] = moving_average_smoothing(future_df["Produksi"], window=3)
+        return future_df
+
+    # --- RESERVE CALCULATION FUNCTION ---
+    def calculate_remaining_reserves(energy_type, historical_df, future_df, target_year):
+        """
+        Menghitung cadangan energi yang tersisa dan estimasi tahun habisnya.
+
+        Args:
+            energy_type (str): Jenis energi yang dipilih
+            historical_df (DataFrame): Data historis produksi
+            future_df (DataFrame): Data prediksi produksi
+            target_year (int): Tahun prediksi target
+
+        Returns:
+            tuple: (cadangan_tersisa, estimasi_tahun_habis, persentase_tersisa)
+        """
+        if energy_type not in ENERGY_RESERVES or ENERGY_RESERVES[energy_type] == 0:
+            return None, None, None
+
+        try:
+            # Ambil total cadangan awal
+            initial_reserves = ENERGY_RESERVES[energy_type]
+
+            # 1. Dapatkan data historis dari file Excel (1980-2023)
+            raw_data = pd.read_excel(DATA_PATH)
+            raw_data = raw_data[raw_data["Jenis_Energi"] == energy_type]
+
+            # Ambil data tahunan dari 1980-2023
+            historical_years = range(1980, 2024)  # dari 1980 hingga 2023
+            historical_consumption = 0
+
+            # Jika data bentuknya sudah tahunan
+            if not raw_data.empty:
+                # Ambil baris data untuk energi yang dipilih
+                energy_data = raw_data.iloc[0]
+
+                # Jumlahkan konsumsi historis (1980-2023)
+                for year in historical_years:
+                    year_str = str(year)
+                    if year_str in energy_data and not pd.isna(energy_data[year_str]):
+                        historical_consumption += float(energy_data[year_str])
+
+            # 2. Dapatkan data prediksi dari tahun 2024 sampai tahun target
+            future_consumption = 0
+
+            if energy_type == "Biodiesel":
+                # Untuk data biodiesel yang sudah dalam format tahunan
+                for year in range(2024, target_year + 1):
+                    if year in future_df.index:
+                        value = future_df.loc[year, "Produksi"]
+                        if isinstance(value, pd.Series):
+                            value = value.iloc[0]  # Ambil nilai pertama jika Series
+                        future_consumption += value
+            else:
+                # Untuk data lain yang dalam format bulanan, ambil hanya bulan Desember sebagai nilai tahunan
+                for year in range(2024, target_year + 1):
+                    december = f"{year}-12"
+                    if december in future_df.index:
+                        value = future_df.loc[december, "Produksi"]
+                        if isinstance(value, pd.Series):
+                            value = value.iloc[0]  # Ambil nilai pertama jika Series
+                        future_consumption += value
+
+            # 3. Hitung cadangan tersisa
+            remaining_reserves = initial_reserves - historical_consumption - future_consumption
+
+            # 4. Hitung persentase cadangan tersisa
+            percentage_remaining = (remaining_reserves / initial_reserves) * 100
+
+            # 5. Prediksi tahun habisnya berdasarkan laju konsumsi terakhir
+            if energy_type == "Biodiesel":
+                # Gunakan nilai prediksi tahun terakhir
+                if target_year in future_df.index:
+                    annual_consumption_rate = future_df.loc[target_year, "Produksi"]
+                    if isinstance(annual_consumption_rate, pd.Series):
+                        annual_consumption_rate = annual_consumption_rate.iloc[0]
+                else:
+                    annual_consumption_rate = future_df["Produksi"].iloc[-1]
+            else:
+                # Gunakan nilai prediksi Desember tahun terakhir
+                december_target = f"{target_year}-12"
+                if december_target in future_df.index:
+                    annual_consumption_rate = future_df.loc[december_target, "Produksi"]
+                    if isinstance(annual_consumption_rate, pd.Series):
+                        annual_consumption_rate = annual_consumption_rate.iloc[0]
+                else:
+                    # Ambil data Desember terakhir yang ada
+                    try:
+                        # Cari bulan Desember terakhir yang tersedia
+                        december_dates = [date for date in future_df.index if date.month == 12]
+                        if december_dates:
+                            last_december = max(december_dates)
+                            annual_consumption_rate = future_df.loc[last_december, "Produksi"]
+                            if isinstance(annual_consumption_rate, pd.Series):
+                                annual_consumption_rate = annual_consumption_rate.iloc[0]
+                        else:
+                            annual_consumption_rate = future_df["Produksi"].iloc[-1]
+                    except:
+                        annual_consumption_rate = future_df["Produksi"].iloc[-1]
+
+            # Jika cadangan tersisa negatif, cari tahun habisnya antara tahun awal dan target
+            if remaining_reserves <= 0:
+                # Reset nilai konsumsi historis
+                cumulative_consumption = historical_consumption
+
+                # Cari tahun di mana cadangan habis
+                for year in range(2024, target_year + 1):
+                    if energy_type == "Biodiesel":
+                        if year in future_df.index:
+                            year_consumption = future_df.loc[year, "Produksi"]
+                            if isinstance(year_consumption, pd.Series):
+                                year_consumption = year_consumption.iloc[0]
+                        else:
+                            continue
+                    else:
+                        december = f"{year}-12"
+                        if december in future_df.index:
+                            year_consumption = future_df.loc[december, "Produksi"]
+                            if isinstance(year_consumption, pd.Series):
+                                year_consumption = year_consumption.iloc[0]
+                        else:
+                            continue
+
+                    cumulative_consumption += year_consumption
+                    if cumulative_consumption >= initial_reserves:
+                        # Interpolasi untuk mendapatkan fraksi tahun yang lebih akurat
+                        prev_consumption = cumulative_consumption - year_consumption
+                        remaining = initial_reserves - prev_consumption
+                        fraction = remaining / year_consumption
+                        estimated_year = year - 1 + fraction
+
+                        # Kembalikan nilai cadangan yang mungkin negatif jika target_year melebihi tahun habis
+                        if target_year > estimated_year:
+                            over_consumption = cumulative_consumption - initial_reserves
+                            # Buat nilai percentage_remaining negatif untuk menunjukkan habisnya
+                            percentage_remaining = -1 * (over_consumption / initial_reserves) * 100
+                            return remaining_reserves, estimated_year, percentage_remaining
+
+                        return 0, estimated_year, 0
+
+                # Jika tidak bisa ditemukan tahun pastinya, gunakan nilai sebelum tahun target
+                return remaining_reserves, target_year - 1, percentage_remaining
+            else:
+                # Hitung sisa tahun berdasarkan konsumsi tahunan terakhir
+                years_remaining = remaining_reserves / annual_consumption_rate if annual_consumption_rate > 0 else float('inf')
+                estimated_year_depleted = target_year + years_remaining
+
+            return remaining_reserves, estimated_year_depleted, percentage_remaining
+
+        except Exception as e:
+            print(f"Error dalam calculate_remaining_reserves: {e}")
+            return None, None, None
+
+    # --- REPLACEMENT PROPORTION CALCULATION ---
+    def calculate_replacement_proportion(renewable_df, fossil_df, target_year, energy_type):
+        """
+        Calculate the proportion of renewable energy replacing fossil fuel.
+
+        Args:
+            renewable_df (DataFrame): Biodiesel or Fuel Ethanol production data
+            fossil_df (DataFrame): Distillate Fuel Oil or Motor Gasoline production data
+            target_year (int): Target year for calculation
+            energy_type (str): "Biodiesel" or "Fuel Ethanol"
+
+        Returns:
+            tuple: (proportion_percentage, renewable_value, fossil_value)
+        """
+        try:
+            # Get the fossil fuel value for target year
+            fossil_value = fossil_df[fossil_df['Tahun'] == target_year]['Produksi_Prediksi'].values[0]
+
+            # Get the renewable energy value for target year
+            if energy_type == "Biodiesel":
+                if target_year in renewable_df.index:
+                    renewable_value = renewable_df.loc[target_year, "Produksi"]
+                    if isinstance(renewable_value, pd.Series):
+                        renewable_value = renewable_value.iloc[0]
+                else:
+                    # If target year not in data, find closest year
+                    closest_year = min(renewable_df.index, key=lambda x: abs(x - target_year))
+                    renewable_value = renewable_df.loc[closest_year, "Produksi"]
+                    if isinstance(renewable_value, pd.Series):
+                        renewable_value = renewable_value.iloc[0]
+            else:  # Fuel Ethanol (monthly data)
+                target_date = f"{target_year}-12"
+                if target_date in renewable_df.index:
+                    renewable_value = renewable_df.loc[target_date, "Produksi"]
+                    if isinstance(renewable_value, pd.Series):
+                        renewable_value = renewable_value.iloc[0]
+                else:
+                    # Find latest December value before target year
+                    december_dates = [date for date in renewable_df.index 
+                                  if isinstance(date, pd.Timestamp) and date.month == 12 and date.year <= target_year]
+                    if december_dates:
+                        last_december = max(december_dates)
+                        renewable_value = renewable_df.loc[last_december, "Produksi"]
+                        if isinstance(renewable_value, pd.Series):
+                            renewable_value = renewable_value.iloc[0]
+                    else:
+                        renewable_value = 0
+
+            # Calculate proportion percentage
+            proportion_percentage = (renewable_value / fossil_value) * 100
+
+            return proportion_percentage, renewable_value, fossil_value
+
+        except Exception as e:
+            print(f"Error in calculate_replacement_proportion: {e}")
+            return 0, 0, 0
+
     # --- HEADER ---
     st.markdown('<h1 class="main-header">Prediksi Produksi Energi</h1>', unsafe_allow_html=True)
     st.markdown('<p class="sub-header">Visualisasi dan prediksi produksi energi berdasarkan model machine learning</p>', unsafe_allow_html=True)
@@ -1290,12 +1222,3 @@ def show_main_app():
     st.markdown('<div class="footer">', unsafe_allow_html=True)
     st.markdown('© 2023 Prediksi Produksi Energi | Dibuat dengan Streamlit', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
-
-# --- MAIN EXECUTION ---
-if __name__ == "__main__":
-    # Selalu tampilkan welcome popup jika session state mengindikasikannya
-    if st.session_state.show_welcome:
-        show_welcome_popup()
-
-    # Aplikasi utama tetap berjalan di belakang popup
-    show_main_app()  # Fungsi ini berisi kode aplikasi utama
