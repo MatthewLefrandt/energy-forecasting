@@ -84,7 +84,7 @@ if st.session_state.show_welcome:
             <div class="welcome-icon">🔍✨</div>
             <div class="welcome-title">Selamat Datang di Aplikasi Prediksi Energi</div>
             <div class="welcome-text">
-                Di sini Anda bisa memprediksi produksi berbagai jenis energi hingga tahun 2100, melihat visualisasi interaktif tren historis dan masa depan, serta menganalisis keberlanjutan cadangan energi fosil dan potensi penggantiannya dengan energi terbarukan.
+                Di sini Anda bisa memprediksi jumlah produksi berbagai jenis energi hingga tahun 2100, melihat visualisasi interaktif tren historis dan masa depan, serta menganalisis keberlanjutan cadangan energi fosil dan potensi penggantiannya dengan energi terbarukan.
                 Untuk pengalaman terbaik dalam menjelajahi visualisasi data kami, 
                 kami merekomendasikan untuk:<br><br>
                 • Mengatur zoom browser ke <b>70%</b><br>
@@ -486,7 +486,7 @@ else:
 
     # --- HEADER ---
     st.markdown('<h1 class="main-header">Prediksi Produksi Energi</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="sub-header">Selamat datang di Dashboard Analitik Energi yang memberikan prediksi produksi lima jenis energi utama berdasarkan data historis dan model machine learning. Navigasikan melalui sidebar untuk memilih jenis energi dan tahun target, lalu dapatkan visualisasi interaktif beserta analisis cadangan dan potensi penggantian bahan bakar yang relevan</p>', unsafe_allow_html=True)
+    st.markdown('<p class="sub-header">Selamat datang di Dashboard Analitik Energi yang memberikan prediksi produksi lima jenis energi utama berdasarkan data historis dan model machine learning. Navigasikan melalui sidebar untuk memilih jenis energi dan tahun target, lalu dapatkan visualisasi interaktif beserta analisis cadangan dan potensi penggantian bahan bakar yang relevan.</p>', unsafe_allow_html=True)
 
     # --- SIDEBAR ---
     with st.sidebar:
