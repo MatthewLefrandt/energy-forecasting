@@ -842,44 +842,27 @@ else:
                         
                         if depletion_year_temp is not None and depletion_year_temp <= target_year:
                             depletion_year_int = int(depletion_year_temp)
-                            
                             depletion_date = pd.Timestamp(year=depletion_year_int, month=12, day=1)
                             
-                            if depletion_date in future_df.index:
-                                depletion_value = future_df.loc[depletion_date, "Produksi"]
-                                if isinstance(depletion_value, pd.Series):
-                                    depletion_value = depletion_value.iloc[0]
-                                
-                                fig.add_trace(go.Scatter(
-                                    x=[depletion_date],
-                                    y=[depletion_value],
-                                    mode='markers+text',
-                                    name=f'Cadangan Habis',
-                                    marker=dict(
-                                        color='red',
-                                        size=15,
-                                        symbol='x',
-                                        line=dict(color='darkred', width=3)
-                                    ),
-                                    text=[f"Habis di {depletion_year_int}"],
-                                    textposition="top center",
-                                    textfont=dict(
-                                        size=12,
-                                        color='red',
-                                        family='Arial, sans-serif'
-                                    ),
-                                    showlegend=True
-                                ))
-                                
-                                fig.add_vline(
-                                    x=depletion_date,
-                                    line_width=2,
-                                    line_dash="dot",
-                                    line_color="red",
-                                    annotation_text=f"Cadangan Habis ({depletion_year_int})",
-                                    annotation_position="top",
-                                    annotation_font=dict(color='red', size=11)
-                                )
+                            # Tambahkan garis vertikal merah putus-putus
+                            fig.add_vline(
+                                x=depletion_date,
+                                line_width=2,
+                                line_dash="dash",
+                                line_color="red"
+                            )
+                            
+                            # Tambahkan anotasi
+                            fig.add_annotation(
+                                x=depletion_date,
+                                y=df["Produksi"].mean() * 1.2,
+                                text=f"Cadangan Habis ({depletion_year_int})",
+                                showarrow=True,
+                                arrowhead=1,
+                                ax=40,
+                                ay=-40,
+                                font=dict(color="red", size=11)
+                            )
 
                     last_year = df.index.year.max()
                     first_pred_year = last_year + 1
