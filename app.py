@@ -1029,7 +1029,7 @@ else:
                                 value=max(0, display_value),  # Pastikan tidak negatif untuk gauge
                                 domain={'x': [0, 1], 'y': [0, 1]},
                                 title={
-                                    'text': f"<b>Cadangan {energy_type} Tersisa</b>", 
+                                    'text': f"<b>Cadangan {energy_type} Tersisa Tahun {target_year}</b>", 
                                     'font': {'size': 24, 'family': 'Arial, sans-serif', 'color': '#808080'}  # Abu-abu
                                 },
                                 gauge={
