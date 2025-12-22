@@ -426,14 +426,15 @@ else:
                         remaining = initial_reserves - prev_consumption
                         fraction = remaining / year_consumption if year_consumption > 0 else 0
                         estimated_year = year - 1 + fraction
-
+            
                         # Jika tahun target sudah melewati tahun habisnya, set remaining_reserves ke 0
                         if target_year > estimated_year:
                             return 0, estimated_year, 0
-
+            
                         return max(0, remaining), estimated_year, max(0, percentage_remaining)
-
+            
                 return 0, target_year - 1, 0
+        
             else:
                 years_remaining = remaining_reserves / annual_consumption_rate if annual_consumption_rate > 0 else float('inf')
                 estimated_year_depleted = target_year + years_remaining
@@ -809,22 +810,28 @@ else:
 
                             elif energy_type in ["Batu Bara", "Gas Alam", "Minyak Bumi"]:
                                 st.markdown("### Estimasi Cadangan")
-
+                            
                                 remaining_reserves, depletion_year_calc, percentage_remaining = calculate_remaining_reserves(
                                     energy_type, df, future_df, display_year
                                 )
-
+                            
                                 if remaining_reserves is not None:
                                     metrics_col1, metrics_col2 = st.columns(2)
                                     with metrics_col1:
                                         delta_color = "normal" if percentage_remaining > 0 else "inverse"
-
-                                        display_value = f"{abs(remaining_reserves):,.2f}"
-
+                            
+                                        # Jika tahun target sudah melewati tahun habisnya, tampilkan cadangan sebagai 0
+                                        if depletion_year_calc is not None and target_year > depletion_year_calc:
+                                            display_value = "0.00"
+                                            display_percentage = "0.0"
+                                        else:
+                                            display_value = f"{abs(remaining_reserves):,.2f}"
+                                            display_percentage = f"{max(0, percentage_remaining):.1f}"
+                            
                                         st.metric(
                                             "Cadangan Tersisa", 
                                             display_value, 
-                                            f"{max(0, percentage_remaining):.1f}% dari total",
+                                            f"{display_percentage}% dari total",
                                             delta_color=delta_color
                                         )
 
