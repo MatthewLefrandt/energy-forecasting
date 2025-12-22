@@ -426,15 +426,15 @@ else:
                         remaining = initial_reserves - prev_consumption
                         fraction = remaining / year_consumption if year_consumption > 0 else 0
                         estimated_year = year - 1 + fraction
-            
+
                         # Jika tahun target sudah melewati tahun habisnya, set remaining_reserves ke 0
                         if target_year > estimated_year:
                             return 0, estimated_year, 0
-            
+
                         return max(0, remaining), estimated_year, max(0, percentage_remaining)
-            
+
                 return 0, target_year - 1, 0
-        
+
             else:
                 years_remaining = remaining_reserves / annual_consumption_rate if annual_consumption_rate > 0 else float('inf')
                 estimated_year_depleted = target_year + years_remaining
@@ -810,16 +810,16 @@ else:
 
                             elif energy_type in ["Batu Bara", "Gas Alam", "Minyak Bumi"]:
                                 st.markdown("### Estimasi Cadangan")
-                            
+
                                 remaining_reserves, depletion_year_calc, percentage_remaining = calculate_remaining_reserves(
                                     energy_type, df, future_df, display_year
                                 )
-                            
+
                                 if remaining_reserves is not None:
                                     metrics_col1, metrics_col2 = st.columns(2)
                                     with metrics_col1:
                                         delta_color = "normal" if percentage_remaining > 0 else "inverse"
-                            
+
                                         # Jika tahun target sudah melewati tahun habisnya, tampilkan cadangan sebagai 0
                                         if depletion_year_calc is not None and target_year > depletion_year_calc:
                                             display_value = "0.00"
@@ -827,7 +827,7 @@ else:
                                         else:
                                             display_value = f"{abs(remaining_reserves):,.2f}"
                                             display_percentage = f"{max(0, percentage_remaining):.1f}"
-                            
+
                                         st.metric(
                                             "Cadangan Tersisa", 
                                             display_value, 
@@ -991,17 +991,17 @@ else:
                     if energy_type in ["Batu Bara", "Gas Alam", "Minyak Bumi"]:
                         # Selalu gunakan tahun filter user untuk visualisasi cadangan
                         display_year = target_year
-                    
+
                         remaining_reserves, depletion_year_calc, percentage_remaining = calculate_remaining_reserves(
                             energy_type, df, future_df, display_year
                         )
-                    
+
                         if remaining_reserves is not None:
                             st.markdown(f"### Visualisasi Cadangan Tersisa Tahun {display_year}")
-                    
+
                             # Cek apakah tahun target sudah melewati tahun habisnya
                             is_depleted = depletion_year_calc is not None and target_year > depletion_year_calc
-                    
+
                             # Jika sudah habis, buat gauge chart dengan nilai 0
                             if is_depleted:
                                 # Gauge chart untuk cadangan habis (0%)
@@ -1040,7 +1040,7 @@ else:
                                         }
                                     }
                                 ))
-                    
+
                                 gauge_fig.add_annotation(
                                     x=0.5, y=0.43,
                                     text="0.0%",  # Teks tetap 0.0%
@@ -1048,7 +1048,7 @@ else:
                                     showarrow=False,
                                     align="center"
                                 )
-                    
+
                                 gauge_fig.add_annotation(
                                     x=0.5, y=0.40,
                                     text="0",  # Teks tetap 0
@@ -1056,19 +1056,19 @@ else:
                                     showarrow=False,
                                     align="center"
                                 )
-                    
+
                             else:
                                 # Gauge chart normal untuk cadangan yang masih tersisa
                                 display_percentage = max(0, percentage_remaining)
                                 display_value = display_percentage
-                    
+
                                 if display_value > 50:
                                     gauge_color = '#4CAF50'
                                 elif display_value > 20:
                                     gauge_color = '#FFA000'
                                 else:
                                     gauge_color = 'red'
-                    
+
                                 gauge_fig = go.Figure(go.Indicator(
                                     mode="gauge",
                                     value=display_value,
@@ -1104,7 +1104,7 @@ else:
                                         }
                                     }
                                 ))
-                    
+
                                 gauge_fig.add_annotation(
                                     x=0.5, y=0.43,
                                     text=f"{display_value:.1f}%",
@@ -1112,7 +1112,7 @@ else:
                                     showarrow=False,
                                     align="center"
                                 )
-                    
+
                                 gauge_fig.add_annotation(
                                     x=0.5, y=0.40,
                                     text=f"{remaining_reserves:,.0f}",
@@ -1120,7 +1120,7 @@ else:
                                     showarrow=False,
                                     align="center"
                                 )
-                    
+
                             # Kode hover info dan layout yang sama untuk kedua kasus
                             gauge_fig.update_layout(
                                 height=450,
@@ -1137,7 +1137,7 @@ else:
                                 ),
                                 showlegend=False
                             )
-                    
+
                             # Hover info
                             hover_text = ""
                             if is_depleted:
@@ -1150,7 +1150,7 @@ else:
                                             f"Total cadangan awal: {ENERGY_RESERVES[energy_type]:,.0f}<br>" + \
                                             f"Cadangan tersisa: {remaining_reserves:,.0f}<br>" + \
                                             f"Persentase tersisa: {display_value:.1f}%"
-                    
+
                             gauge_fig.add_trace(go.Scatter(
                                 x=[0.5],
                                 y=[0.5],
@@ -1163,7 +1163,7 @@ else:
                                 hovertext=hover_text,
                                 showlegend=False
                             ))
-                    
+
                             st.plotly_chart(gauge_fig, use_container_width=True, config={'displayModeBar': False})
 
                             # Interpretasi berdasarkan tahun target user dan status cadangan
