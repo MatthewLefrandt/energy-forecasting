@@ -991,14 +991,14 @@ else:
                     if energy_type in ["Batu Bara", "Gas Alam", "Minyak Bumi"]:
                         # Selalu gunakan tahun filter user untuk visualisasi cadangan
                         display_year = target_year
-
+                    
                         remaining_reserves, depletion_year_calc, percentage_remaining = calculate_remaining_reserves(
                             energy_type, df, future_df, display_year
                         )
-
+                    
                         if remaining_reserves is not None:
                             st.markdown(f"### Visualisasi Cadangan Tersisa Tahun {display_year}")
-
+                    
                             # Jika tahun target sudah melewati tahun habisnya, pastikan nilai cadangan adalah 0
                             if depletion_year_calc is not None and target_year > depletion_year_calc:
                                 display_percentage = 0
@@ -1007,10 +1007,13 @@ else:
                             else:
                                 display_percentage = max(0, percentage_remaining)
                                 display_value = display_percentage
-
-                            gauge_color = '#4CAF50' if display_value > 50 else (
-                                        '#FFA000' if display_value > 20 else 'red')
-
+                    
+                            gauge_color = 'red'  # Default color for 0%
+                            if display_value > 50:
+                                gauge_color = '#4CAF50'
+                            elif display_value > 20:
+                                gauge_color = '#FFA000'
+                    
                             gauge_fig = go.Figure(go.Indicator(
                                 mode="gauge",
                                 value=display_value,
@@ -1028,8 +1031,7 @@ else:
                                         'showticklabels': True
                                     },
                                     'bar': {
-                                        'color': '#4CAF50' if display_value > 50 else (
-                                                '#FFA000' if display_value > 20 else 'red'), 
+                                        'color': gauge_color, 
                                         'thickness': 0.7
                                     },
                                     'bgcolor': 'rgba(255, 255, 255, 0)',
@@ -1047,7 +1049,7 @@ else:
                                     }
                                 }
                             ))
-
+                    
                             gauge_fig.add_annotation(
                                 x=0.5, y=0.43,
                                 text=f"{display_value:.1f}%",
@@ -1055,7 +1057,7 @@ else:
                                 showarrow=False,
                                 align="center"
                             )
-
+                    
                             gauge_fig.add_annotation(
                                 x=0.5, y=0.40,
                                 text=f"{remaining_reserves:,.0f}",
