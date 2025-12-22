@@ -431,12 +431,7 @@ else:
                         fraction = remaining / year_consumption if year_consumption > 0 else 0
                         estimated_year = year - 1 + fraction
 
-                        if target_year > estimated_year:
-                            over_consumption = cumulative_consumption - initial_reserves
-                            percentage_remaining = -1 * (over_consumption / initial_reserves) * 100
-                            return display_remaining_reserves, estimated_year, display_percentage_remaining
-
-                        return 0, estimated_year, 0
+                        return display_remaining_reserves, estimated_year, display_percentage_remaining
 
                 return display_remaining_reserves, target_year - 1, display_percentage_remaining
             else:
@@ -987,10 +982,8 @@ else:
                     st.plotly_chart(fig, use_container_width=True)
 
                     if energy_type in ["Batu Bara", "Gas Alam", "Minyak Bumi"]:
-                        # Untuk visualisasi cadangan, gunakan display_year (tahun target atau tahun habisnya, mana yang lebih dulu)
+                        # Selalu gunakan tahun filter user untuk visualisasi cadangan
                         display_year = target_year
-                        if depletion_year is not None and target_year > depletion_year:
-                            display_year = depletion_year
 
                         remaining_reserves, depletion_year_calc, percentage_remaining = calculate_remaining_reserves(
                             energy_type, df, future_df, display_year
@@ -1112,10 +1105,12 @@ else:
 
                             st.plotly_chart(gauge_fig, use_container_width=True, config={'displayModeBar': False})
 
-                            if target_year > depletion_year_calc:
+                            # Interpretasi berdasarkan tahun target user dan status cadangan
+                            if depletion_year_calc is not None and target_year > depletion_year_calc:
                                 st.error(f"""
                                 **Interpretasi:**
                                 - Cadangan {energy_type} diperkirakan sudah habis pada tahun {int(depletion_year_calc)}, sebelum target prediksi tahun {target_year}.
+                                - Pada tahun {target_year}, cadangan sudah habis selama {target_year - int(depletion_year_calc)} tahun.
                                 - Diperlukan penemuan cadangan baru atau pengurangan konsumsi untuk mencegah kelangkaan.
                                 """)
                             elif percentage_remaining > 0:
