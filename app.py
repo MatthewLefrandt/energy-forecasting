@@ -999,77 +999,129 @@ else:
                         if remaining_reserves is not None:
                             st.markdown(f"### Visualisasi Cadangan Tersisa Tahun {display_year}")
                     
-                            # Jika tahun target sudah melewati tahun habisnya, pastikan nilai cadangan adalah 0
-                            if depletion_year_calc is not None and target_year > depletion_year_calc:
-                                display_percentage = 0
-                                display_value = 0
-                                remaining_reserves = 0
+                            # Cek apakah tahun target sudah melewati tahun habisnya
+                            is_depleted = depletion_year_calc is not None and target_year > depletion_year_calc
+                    
+                            # Jika sudah habis, buat gauge chart dengan nilai 0
+                            if is_depleted:
+                                # Gauge chart untuk cadangan habis (0%)
+                                gauge_fig = go.Figure(go.Indicator(
+                                    mode="gauge",
+                                    value=0,  # Nilai tetap 0
+                                    domain={'x': [0, 1], 'y': [0, 1]},
+                                    title={
+                                        'text': f"<b>Cadangan {energy_type} Tersisa Tahun {display_year}</b>", 
+                                        'font': {'size': 24, 'family': 'Arial, sans-serif', 'color': '#808080'}
+                                    },
+                                    gauge={
+                                        'axis': {
+                                            'range': [0, 100], 
+                                            'tickwidth': 1, 
+                                            'tickcolor': "rgba(0,0,0,0)",
+                                            'tickfont': {'size': 14, 'color': '#808080'},
+                                            'showticklabels': True
+                                        },
+                                        'bar': {
+                                            'color': 'red',  # Warna tetap merah
+                                            'thickness': 0.7
+                                        },
+                                        'bgcolor': 'rgba(255, 255, 255, 0)',
+                                        'borderwidth': 0,
+                                        'bordercolor': "rgba(0,0,0,0)",
+                                        'steps': [
+                                            {'range': [0, 20], 'color': 'rgba(255, 99, 71, 0.25)'},
+                                            {'range': [20, 50], 'color': 'rgba(255, 165, 0, 0.25)'},
+                                            {'range': [50, 100], 'color': 'rgba(144, 238, 144, 0.25)'}
+                                        ],
+                                        'threshold': {
+                                            'line': {'color': "red", 'width': 3},
+                                            'thickness': 0.8,
+                                            'value': 20
+                                        }
+                                    }
+                                ))
+                    
+                                gauge_fig.add_annotation(
+                                    x=0.5, y=0.43,
+                                    text="0.0%",  # Teks tetap 0.0%
+                                    font={'size': 64, 'color': 'red', 'family': 'Arial, sans-serif', 'weight': 'bold'},
+                                    showarrow=False,
+                                    align="center"
+                                )
+                    
+                                gauge_fig.add_annotation(
+                                    x=0.5, y=0.40,
+                                    text="0",  # Teks tetap 0
+                                    font={'size': 22, 'color': '#808080', 'family': 'Arial, sans-serif', 'weight': 'bold'},
+                                    showarrow=False,
+                                    align="center"
+                                )
+                    
                             else:
+                                # Gauge chart normal untuk cadangan yang masih tersisa
                                 display_percentage = max(0, percentage_remaining)
                                 display_value = display_percentage
                     
-                            # Pastikan warna gauge sesuai dengan nilai yang ditampilkan
-                            if display_value <= 0:
-                                gauge_color = 'red'
-                            elif display_value > 50:
-                                gauge_color = '#4CAF50'
-                            elif display_value > 20:
-                                gauge_color = '#FFA000'
-                            else:
-                                gauge_color = 'red'
+                                if display_value > 50:
+                                    gauge_color = '#4CAF50'
+                                elif display_value > 20:
+                                    gauge_color = '#FFA000'
+                                else:
+                                    gauge_color = 'red'
                     
-                            gauge_fig = go.Figure(go.Indicator(
-                                mode="gauge",
-                                value=display_value,  # Gunakan display_value yang sudah disesuaikan
-                                domain={'x': [0, 1], 'y': [0, 1]},
-                                title={
-                                    'text': f"<b>Cadangan {energy_type} Tersisa Tahun {display_year}</b>", 
-                                    'font': {'size': 24, 'family': 'Arial, sans-serif', 'color': '#808080'}
-                                },
-                                gauge={
-                                    'axis': {
-                                        'range': [0, 100], 
-                                        'tickwidth': 1, 
-                                        'tickcolor': "rgba(0,0,0,0)",
-                                        'tickfont': {'size': 14, 'color': '#808080'},
-                                        'showticklabels': True
+                                gauge_fig = go.Figure(go.Indicator(
+                                    mode="gauge",
+                                    value=display_value,
+                                    domain={'x': [0, 1], 'y': [0, 1]},
+                                    title={
+                                        'text': f"<b>Cadangan {energy_type} Tersisa Tahun {display_year}</b>", 
+                                        'font': {'size': 24, 'family': 'Arial, sans-serif', 'color': '#808080'}
                                     },
-                                    'bar': {
-                                        'color': gauge_color,  # Gunakan gauge_color yang sudah ditentukan
-                                        'thickness': 0.7
-                                    },
-                                    'bgcolor': 'rgba(255, 255, 255, 0)',
-                                    'borderwidth': 0,
-                                    'bordercolor': "rgba(0,0,0,0)",
-                                    'steps': [
-                                        {'range': [0, 20], 'color': 'rgba(255, 99, 71, 0.25)'},
-                                        {'range': [20, 50], 'color': 'rgba(255, 165, 0, 0.25)'},
-                                        {'range': [50, 100], 'color': 'rgba(144, 238, 144, 0.25)'}
-                                    ],
-                                    'threshold': {
-                                        'line': {'color': "red", 'width': 3},
-                                        'thickness': 0.8,
-                                        'value': 20
+                                    gauge={
+                                        'axis': {
+                                            'range': [0, 100], 
+                                            'tickwidth': 1, 
+                                            'tickcolor': "rgba(0,0,0,0)",
+                                            'tickfont': {'size': 14, 'color': '#808080'},
+                                            'showticklabels': True
+                                        },
+                                        'bar': {
+                                            'color': gauge_color, 
+                                            'thickness': 0.7
+                                        },
+                                        'bgcolor': 'rgba(255, 255, 255, 0)',
+                                        'borderwidth': 0,
+                                        'bordercolor': "rgba(0,0,0,0)",
+                                        'steps': [
+                                            {'range': [0, 20], 'color': 'rgba(255, 99, 71, 0.25)'},
+                                            {'range': [20, 50], 'color': 'rgba(255, 165, 0, 0.25)'},
+                                            {'range': [50, 100], 'color': 'rgba(144, 238, 144, 0.25)'}
+                                        ],
+                                        'threshold': {
+                                            'line': {'color': "red", 'width': 3},
+                                            'thickness': 0.8,
+                                            'value': 20
+                                        }
                                     }
-                                }
-                            ))
+                                ))
                     
-                            gauge_fig.add_annotation(
-                                x=0.5, y=0.43,
-                                text=f"{display_value:.1f}%",  # Gunakan display_value yang sudah disesuaikan
-                                font={'size': 64, 'color': gauge_color, 'family': 'Arial, sans-serif', 'weight': 'bold'},
-                                showarrow=False,
-                                align="center"
-                            )
+                                gauge_fig.add_annotation(
+                                    x=0.5, y=0.43,
+                                    text=f"{display_value:.1f}%",
+                                    font={'size': 64, 'color': gauge_color, 'family': 'Arial, sans-serif', 'weight': 'bold'},
+                                    showarrow=False,
+                                    align="center"
+                                )
                     
-                            gauge_fig.add_annotation(
-                                x=0.5, y=0.40,
-                                text=f"{remaining_reserves:,.0f}",  # Gunakan remaining_reserves yang sudah disesuaikan
-                                font={'size': 22, 'color': '#808080', 'family': 'Arial, sans-serif', 'weight': 'bold'},
-                                showarrow=False,
-                                align="center"
-                            )
-
+                                gauge_fig.add_annotation(
+                                    x=0.5, y=0.40,
+                                    text=f"{remaining_reserves:,.0f}",
+                                    font={'size': 22, 'color': '#808080', 'family': 'Arial, sans-serif', 'weight': 'bold'},
+                                    showarrow=False,
+                                    align="center"
+                                )
+                    
+                            # Kode hover info dan layout yang sama untuk kedua kasus
                             gauge_fig.update_layout(
                                 height=450,
                                 margin=dict(l=20, r=20, t=60, b=20),
@@ -1085,7 +1137,20 @@ else:
                                 ),
                                 showlegend=False
                             )
-
+                    
+                            # Hover info
+                            hover_text = ""
+                            if is_depleted:
+                                hover_text = f"<b>Detail Cadangan {energy_type}</b><br>" + \
+                                            f"Total cadangan awal: {ENERGY_RESERVES[energy_type]:,.0f}<br>" + \
+                                            f"Cadangan tersisa: 0<br>" + \
+                                            f"Persentase tersisa: 0.0%"
+                            else:
+                                hover_text = f"<b>Detail Cadangan {energy_type}</b><br>" + \
+                                            f"Total cadangan awal: {ENERGY_RESERVES[energy_type]:,.0f}<br>" + \
+                                            f"Cadangan tersisa: {remaining_reserves:,.0f}<br>" + \
+                                            f"Persentase tersisa: {display_value:.1f}%"
+                    
                             gauge_fig.add_trace(go.Scatter(
                                 x=[0.5],
                                 y=[0.5],
@@ -1095,13 +1160,10 @@ else:
                                     color="rgba(0,0,0,0)"
                                 ),
                                 hoverinfo="text",
-                                hovertext=f"<b>Detail Cadangan {energy_type}</b><br>" +
-                                        f"Total cadangan awal: {ENERGY_RESERVES[energy_type]:,.0f}<br>" +
-                                        f"Cadangan tersisa: {remaining_reserves:,.0f}<br>" +
-                                        f"Persentase tersisa: {display_value:.1f}%",
+                                hovertext=hover_text,
                                 showlegend=False
                             ))
-
+                    
                             st.plotly_chart(gauge_fig, use_container_width=True, config={'displayModeBar': False})
 
                             # Interpretasi berdasarkan tahun target user dan status cadangan
