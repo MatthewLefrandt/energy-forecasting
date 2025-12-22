@@ -1008,15 +1008,19 @@ else:
                                 display_percentage = max(0, percentage_remaining)
                                 display_value = display_percentage
                     
-                            gauge_color = 'red'  # Default color for 0%
-                            if display_value > 50:
+                            # Pastikan warna gauge sesuai dengan nilai yang ditampilkan
+                            if display_value <= 0:
+                                gauge_color = 'red'
+                            elif display_value > 50:
                                 gauge_color = '#4CAF50'
                             elif display_value > 20:
                                 gauge_color = '#FFA000'
+                            else:
+                                gauge_color = 'red'
                     
                             gauge_fig = go.Figure(go.Indicator(
                                 mode="gauge",
-                                value=display_value,
+                                value=display_value,  # Gunakan display_value yang sudah disesuaikan
                                 domain={'x': [0, 1], 'y': [0, 1]},
                                 title={
                                     'text': f"<b>Cadangan {energy_type} Tersisa Tahun {display_year}</b>", 
@@ -1031,7 +1035,7 @@ else:
                                         'showticklabels': True
                                     },
                                     'bar': {
-                                        'color': gauge_color, 
+                                        'color': gauge_color,  # Gunakan gauge_color yang sudah ditentukan
                                         'thickness': 0.7
                                     },
                                     'bgcolor': 'rgba(255, 255, 255, 0)',
@@ -1052,7 +1056,7 @@ else:
                     
                             gauge_fig.add_annotation(
                                 x=0.5, y=0.43,
-                                text=f"{display_value:.1f}%",
+                                text=f"{display_value:.1f}%",  # Gunakan display_value yang sudah disesuaikan
                                 font={'size': 64, 'color': gauge_color, 'family': 'Arial, sans-serif', 'weight': 'bold'},
                                 showarrow=False,
                                 align="center"
@@ -1060,7 +1064,7 @@ else:
                     
                             gauge_fig.add_annotation(
                                 x=0.5, y=0.40,
-                                text=f"{remaining_reserves:,.0f}",
+                                text=f"{remaining_reserves:,.0f}",  # Gunakan remaining_reserves yang sudah disesuaikan
                                 font={'size': 22, 'color': '#808080', 'family': 'Arial, sans-serif', 'weight': 'bold'},
                                 showarrow=False,
                                 align="center"
