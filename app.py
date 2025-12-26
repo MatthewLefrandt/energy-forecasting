@@ -378,14 +378,19 @@ else:
                         fraction = remaining / year_consumption if year_consumption > 0 else 0
                         estimated_year = year - 1 + fraction
 
-                        return 0, estimated_year, 0  # Return 0 instead of negative values
+                        if target_year > estimated_year:
+                            over_consumption = cumulative_consumption - initial_reserves
+                            percentage_remaining = -1 * (over_consumption / initial_reserves) * 100
+                            return remaining_reserves, estimated_year, percentage_remaining
 
-                return 0, target_year - 1, 0  # Return 0 instead of negative values
+                        return 0, estimated_year, 0
+
+                return remaining_reserves, target_year - 1, percentage_remaining
             else:
                 years_remaining = remaining_reserves / annual_consumption_rate if annual_consumption_rate > 0 else float('inf')
                 estimated_year_depleted = target_year + years_remaining
 
-            return max(0, remaining_reserves), estimated_year_depleted, max(0, percentage_remaining)  # Ensure non-negative values
+            return remaining_reserves, estimated_year_depleted, percentage_remaining
 
         except Exception as e:
             print(f"Error dalam calculate_remaining_reserves: {e}")
@@ -752,12 +757,14 @@ else:
                                     with metrics_col1:
                                         delta_color = "normal" if percentage_remaining > 0 else "inverse"
 
-                                        display_value = f"{max(0, remaining_reserves):,.2f}"
+                                        display_value = f"{abs(remaining_reserves):,.2f}"
+                                        if remaining_reserves < 0:
+                                            display_value = f"-{display_value}"
 
                                         st.metric(
                                             "Cadangan Tersisa", 
                                             display_value, 
-                                            f"{max(0, percentage_remaining):.1f}% dari total",
+                                            f"{percentage_remaining:.1f}% dari total",
                                             delta_color=delta_color
                                         )
 
@@ -791,22 +798,7 @@ else:
                 ))
 
                 if not future_df.empty:
-                    # Check if energy is non-renewable and calculate depletion year
-                    depletion_year = None
-                    if energy_type in ["Batu Bara", "Gas Alam", "Minyak Bumi"]:
-                        _, depletion_year_temp, _ = calculate_remaining_reserves(
-                            energy_type, df, future_df, 2100  # Use max year to get full depletion estimate
-                        )
-                        if depletion_year_temp is not None:
-                            depletion_year = int(depletion_year_temp)
-
-                    # Filter future data to stop at depletion year if applicable
-                    if depletion_year is not None and energy_type in ["Batu Bara", "Gas Alam", "Minyak Bumi"]:
-                        future_df_filtered = future_df[future_df.index <= pd.Timestamp(year=depletion_year, month=12, day=31)]
-                        future_yearly = future_df_filtered.resample('Y').mean()
-                    else:
-                        future_df_filtered = future_df
-                        future_yearly = future_df.resample('Y').mean()
+                    future_yearly = future_df.resample('Y').mean()
 
                     fig.add_trace(go.Scatter(
                         x=future_yearly.index, 
@@ -818,8 +810,8 @@ else:
                     ))
 
                     fig.add_trace(go.Scatter(
-                        x=future_df_filtered.index, 
-                        y=future_df_filtered["Produksi"],
+                        x=future_df.index, 
+                        y=future_df["Produksi"],
                         mode='lines',
                         name='Prediksi (Bulanan)',
                         line=dict(color='#FF5252', width=1, dash='dot'),
@@ -828,10 +820,10 @@ else:
                     ))
 
                     target_date = pd.Timestamp(year=target_year, month=12, day=1)
-                    if target_date in future_df_filtered.index:
+                    if target_date in future_df.index:
                         fig.add_trace(go.Scatter(
                             x=[target_date],
-                            y=[future_df_filtered.loc[target_date, "Produksi"]],
+                            y=[future_df.loc[target_date, "Produksi"]],
                             mode='markers',
                             name=f'Prediksi Des {target_year}',
                             marker=dict(
@@ -842,11 +834,16 @@ else:
                             )
                         ))
 
-                    # Highlight titik habisnya cadangan
-                    if energy_type in ["Batu Bara", "Gas Alam", "Minyak Bumi"] and depletion_year is not None:
-                        if depletion_year <= target_year:
-                            depletion_date = pd.Timestamp(year=depletion_year, month=12, day=1)
-
+                    # TAMBAHAN: Highlight titik habisnya cadangan
+                    if energy_type in ["Batu Bara", "Gas Alam", "Minyak Bumi"]:
+                        remaining_reserves_temp, depletion_year_temp, percentage_remaining_temp = calculate_remaining_reserves(
+                            energy_type, df, future_df, target_year
+                        )
+                        
+                        if depletion_year_temp is not None and depletion_year_temp <= target_year:
+                            depletion_year_int = int(depletion_year_temp)
+                            depletion_date = pd.Timestamp(year=depletion_year_int, month=12, day=1)
+                            
                             # Tambahkan garis vertikal merah putus-putus
                             fig.add_vline(
                                 x=depletion_date,
@@ -854,12 +851,12 @@ else:
                                 line_dash="dash",
                                 line_color="red"
                             )
-
+                            
                             # Tambahkan anotasi
                             fig.add_annotation(
                                 x=depletion_date,
                                 y=df["Produksi"].mean() * 1.2,
-                                text=f"Cadangan Habis ({depletion_year})",
+                                text=f"Cadangan Habis ({depletion_year_int})",
                                 showarrow=True,
                                 arrowhead=1,
                                 ax=40,
@@ -933,25 +930,32 @@ else:
                         if remaining_reserves is not None:
                             st.markdown(f"### Visualisasi Cadangan Tersisa Tahun {target_year}")
 
-                            # Ensure percentage is non-negative for display
-                            display_percentage = max(0, percentage_remaining)
-
-                            if display_percentage <= 0:
+                            if percentage_remaining <= 0:
                                 gauge_color = "red"
                                 display_value = 0
-                            elif display_percentage < 20:
+                            elif percentage_remaining < 20:
                                 gauge_color = "red"
-                                display_value = display_percentage
-                            elif display_percentage < 50:
+                                display_value = percentage_remaining
+                            elif percentage_remaining < 50:
                                 gauge_color = "orange"
-                                display_value = display_percentage
+                                display_value = percentage_remaining
                             else:
                                 gauge_color = ENERGY_COLORS.get(energy_type, '#1E88E5')
-                                display_value = display_percentage
+                                display_value = percentage_remaining
+
+                            delta_properties = {
+                                'reference': 100, 
+                                'decreasing': {'color': "red"}, 
+                                'suffix': '%',
+                                'font': {'size': 16}
+                            }
+                            if percentage_remaining < 0:
+                                delta_properties['valueformat'] = '.1f'
+                                delta_properties['decreasing']['color'] = "red"
 
                             gauge_fig = go.Figure(go.Indicator(
                                 mode="gauge",
-                                value=display_value,  # Use non-negative value
+                                value=max(0, display_value),
                                 domain={'x': [0, 1], 'y': [0, 1]},
                                 title={
                                     'text': f"<b>Cadangan {energy_type} Tersisa Tahun {target_year}</b>", 
@@ -966,8 +970,8 @@ else:
                                         'showticklabels': True
                                     },
                                     'bar': {
-                                        'color': '#4CAF50' if display_percentage > 50 else (
-                                                '#FFA000' if display_percentage > 20 else 'red'), 
+                                        'color': '#4CAF50' if percentage_remaining > 50 else (
+                                                '#FFA000' if percentage_remaining > 20 else 'red'), 
                                         'thickness': 0.7
                                     },
                                     'bgcolor': 'rgba(255, 255, 255, 0)',
@@ -986,16 +990,19 @@ else:
                                 }
                             ))
 
-                            # Display non-negative reserves
-                            reserve_text = f"{max(0, remaining_reserves):,.0f}"
-                            text_color = "red" if percentage_remaining <= 0 else "#808080"
+                            reserve_text = f"{abs(remaining_reserves):,.0f}"
+                            if remaining_reserves < 0:
+                                reserve_text = f"-{reserve_text}"
+                                text_color = "red"
+                            else:
+                                text_color = "#808080"
 
-                            gauge_color = '#4CAF50' if display_percentage > 50 else (
-                                        '#FFA000' if display_percentage > 20 else 'red')
+                            gauge_color = '#4CAF50' if percentage_remaining > 50 else (
+                                        '#FFA000' if percentage_remaining > 20 else 'red')
 
                             gauge_fig.add_annotation(
                                 x=0.5, y=0.43,
-                                text=f"{display_value:.1f}%",  # Use non-negative value
+                                text=f"{max(0, display_value):.1f}%",
                                 font={'size': 64, 'color': gauge_color, 'family': 'Arial, sans-serif', 'weight': 'bold'},
                                 showarrow=False,
                                 align="center"
@@ -1037,7 +1044,7 @@ else:
                                 hovertext=f"<b>Detail Cadangan {energy_type}</b><br>" +
                                         f"Total cadangan awal: {ENERGY_RESERVES[energy_type]:,.0f}<br>" +
                                         f"Cadangan tersisa: {reserve_text}<br>" +
-                                        f"Persentase tersisa: {display_value:.1f}%",
+                                        f"Persentase tersisa: {max(0, percentage_remaining):.1f}%",
                                 showlegend=False
                             ))
 
@@ -1046,9 +1053,9 @@ else:
                             if percentage_remaining > 0:
                                 st.info(f"""
                                 **Interpretasi:**
-                                - Cadangan {energy_type} diperkirakan tersisa sekitar {display_percentage:.1f}% pada tahun {target_year}.
+                                - Cadangan {energy_type} diperkirakan tersisa sekitar {percentage_remaining:.1f}% pada tahun {target_year}.
                                 - Dengan tingkat konsumsi saat ini, cadangan diperkirakan akan habis sekitar tahun {int(depletion_year)}.
-                                - Total cadangan tersisa sebesar {max(0, remaining_reserves):,.0f} T BTU dari total {ENERGY_RESERVES[energy_type]:,.0f} T BTU.
+                                - Total cadangan tersisa sebesar {abs(remaining_reserves):,.0f} T BTU dari total {ENERGY_RESERVES[energy_type]:,.0f} T BTU.
                                 """)
                             else:
                                 st.error(f"""
@@ -1111,12 +1118,7 @@ else:
                         """)
 
                     with st.expander("Tabel Data Prediksi", expanded=False):
-                        if energy_type in ["Batu Bara", "Gas Alam", "Minyak Bumi"] and depletion_year is not None:
-                            # Filter data to only show up to depletion year
-                            yearly_future = future_df[future_df.index.year <= depletion_year].resample('Y').mean().reset_index()
-                        else:
-                            yearly_future = future_df.resample('Y').mean().reset_index()
-
+                        yearly_future = future_df.resample('Y').mean().reset_index()
                         yearly_future["Tahun"] = yearly_future["Tahun"].dt.year
                         yearly_future = yearly_future.rename(columns={"Tahun": "Tahun", "Produksi": "Produksi (rata-rata)"})
                         st.dataframe(yearly_future, use_container_width=True)
